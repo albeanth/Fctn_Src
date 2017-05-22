@@ -20,14 +20,16 @@ def MatrixInfNorm(A):
     return(val)
 
 def QR(A):
-    # This function completes the QR factorization for any mxn matrix.
+    # This function completes the full QR factorization for any mxn matrix with m \geq n.
     # Q, R, and the inf-norm of Q*R-A are returned.
     tmp = np.shape(A)
+    print(tmp)
     m = tmp[0]; n = tmp[1]
+    print(m,n)
     R = np.array(A); Q = np.eye(m,m)
 
     # factorization for R uses Alg 10.1 in Trefethen & Bau
-    for k in np.arange(0,m-1):
+    for k in np.arange(0,n-1):
         x = R[k:m,k]
         if np.sign(x[0]) == 0:
             tmpsign = 1
@@ -40,7 +42,7 @@ def QR(A):
         tmpI[k:m,k:m] = tmpI[k:m,k:m] - 2*np.outer(v,v) # parenthesis around v*v' ensures it remains Hermitian
         Q = np.dot(Q,tmpI)
 
-    err = MatrixInfNorm(np.dot(Q,R)-A)
+    err = MatrixInfNorm(np.subtract(np.dot(Q,R),A))
     return(Q,R,err)
 
 def QRsolve(A,b):
