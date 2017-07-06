@@ -76,7 +76,7 @@ def IVP_1D(time,T,source,lmbda):
         # print(Cyan+'RHS');print(f)
         # sys.exit()
 
-        mat = -k - lmbda*m
+        mat = -k + lmbda*m
         mat[order[el]-1,order[el]-1] = mat[order[el]-1,order[el]-1] + 1
 
         sol[nod[el,0]:nod[el,0]+order[el]] = np.linalg.solve(mat,f)
@@ -121,9 +121,9 @@ def Error(sol,time,T,Tp):
 
     return(l2Err,h1Err)
 
-def plot(time,sol):
+def plot(time,sol,lmbda):
 
-    T = lambda t: np.divide(1,np.exp(t))
+    T = lambda t: np.exp(-lmbda*t)
 
     plt.figure(1)
     xplot = np.linspace(time.bounds[0],time.bounds[1],time.nels*10+1)

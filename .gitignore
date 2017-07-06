@@ -1,2 +1,8 @@
 .DS_Store
 __pycache__
+*.aux
+*.log
+*.synctex.gz
+*.pdf
+working_dir/
+*.eps

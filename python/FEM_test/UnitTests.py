@@ -72,39 +72,40 @@ H1Error = np.ones(len(NumOfElem))
 #####################
 #   DFEM BVP TEST  ##
 #####################
-T = lambda x: x**2 #math.sin(x)
-Tp = lambda x: 2*x #math.cos(x)
-source = lambda x: -4*x #cond(x)*math.sin(x) - math.cos(x)
-cond = lambda x: x
-for i,ne in enumerate(NumOfElem):
-    testGrid = SetUpGrid.DFEMGrid1D([0.0,math.pi],[ne],1,delta)
-    FESoln = BVP.DFEM_BVP_1D(testGrid,T,source,cond)
-    BVP.plot(testGrid,FESoln)
-    sys.exit()
-    l2Err, h1Err = BVP.Error(testGrid,FESoln,T,Tp)
-    L2Error[i] = l2Err
-    H1Error[i] = h1Err
-    h[i] = testGrid.hmax
-
-pltCnt = ConvergencePlots(h,L2Error,H1Error,pltCnt)
-
-######################
-##   DFEM IVP TEST  ##
-######################
-# lmbda = 1
-# T = lambda t: 1/math.exp(t)
-# Tp = lambda t: -1/math.exp(t)
-# source = lambda t: -1/math.exp(t) * (1 + lmbda)
+# T = lambda x: x**2 #math.sin(x)
+# Tp = lambda x: 2*x #math.cos(x)
+# source = lambda x: -4*x #cond(x)*math.sin(x) - math.cos(x)
+# cond = lambda x: x
 # for i,ne in enumerate(NumOfElem):
-#     testGrid = SetUpGrid.DFEMGrid1D([0,3],[ne],1,delta)
-#     FESoln = IVP.IVP_1D(testGrid,T,source,lmbda)
-#     # IVP.plot(testGrid,FESoln)
-#     # sys.exit()
-#     l2Err, h1Err = IVP.Error(FESoln,testGrid,T,Tp)
+#     testGrid = SetUpGrid.DFEMGrid1D([0.0,math.pi],[ne],1,delta)
+#     FESoln = BVP.DFEM_BVP_1D(testGrid,T,source,cond)
+#     BVP.plot(testGrid,FESoln)
+#     sys.exit()
+#     l2Err, h1Err = BVP.Error(testGrid,FESoln,T,Tp)
 #     L2Error[i] = l2Err
 #     H1Error[i] = h1Err
 #     h[i] = testGrid.hmax
 #
 # pltCnt = ConvergencePlots(h,L2Error,H1Error,pltCnt)
+
+######################
+##   DFEM IVP TEST  ##
+######################
+# dT/dt + \lambda t = 0
+lmbda = 1
+T = lambda t: math.exp(-lmbda*t)
+Tp = lambda t: -lmbda*math.exp(-lmbda*t)
+source = lambda t: 0
+for i,ne in enumerate(NumOfElem):
+    testGrid = SetUpGrid.DFEMGrid1D([0,3],[ne],1,delta)
+    FESoln = IVP.IVP_1D(testGrid,T,source,lmbda)
+    IVP.plot(testGrid,FESoln,lmbda)
+    sys.exit()
+    l2Err, h1Err = IVP.Error(FESoln,testGrid,T,Tp)
+    L2Error[i] = l2Err
+    H1Error[i] = h1Err
+    h[i] = testGrid.hmax
+
+pltCnt = ConvergencePlots(h,L2Error,H1Error,pltCnt)
 
 plt.show()

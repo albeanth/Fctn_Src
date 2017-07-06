@@ -178,7 +178,6 @@ def Error(space,sol,T,Tp):
     order = space.order
     nod = space.nod
     xnod = space.xnod
-    nnodes = space.nnodes
 
     l2Err = 0.0; h1Err=0.0
 
@@ -193,8 +192,6 @@ def Error(space,sol,T,Tp):
 
             uval = T(t)
             duval = Tp(t)
-            # uval = t
-            # duval = 1
 
             uhval = 0.0; duhval = 0.0 #reset uh and duh evaluations over each element
             for k in range(0,order[el]):
@@ -218,7 +215,6 @@ def plot(space,sol):
     plt.figure(1)
     xplot = np.linspace(space.bounds[0],space.bounds[1],space.nels*10+1)
     plt.plot(xplot,T(xplot), linewidth = 2, color = 'blue')
-    # plt.plot(xplot,xplot, linewidth = 2, color = 'blue')
 
     nw,xw,w = QuadParams.QP(space.maxord)
     ## set mesh parameters to spatial grid
@@ -226,7 +222,6 @@ def plot(space,sol):
     order = space.order
     nod = space.nod
     xnod = space.xnod
-    nnodes = space.nnodes
 
     for el in range(0,nels):
         xL = xnod[nod[el,0]] # left endpoint on element
