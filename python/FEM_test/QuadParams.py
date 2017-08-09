@@ -33,11 +33,33 @@ def QP(maxord):
     elif maxord == 3:  # exact for polynomials of degree 5
         nw = 3;
         xw[0] = -math.sqrt(3./5.)
-        xw[1]=0.
-        xw[2] =- xw[0];
+        xw[1] = 0.
+        xw[2] = -xw[0];
         w[0] = 5./9.
-        w[1]=8./9.
-        w[2]=w[0];
+        w[1] = 8./9.
+        w[2] = w[0];
+    elif maxord == 4:
+        nw = 4;
+        xw[0] = -math.sqrt(3./7. + 2./7.*math.sqrt(6./5.))
+        xw[1] = -math.sqrt(3./7. - 2./7.*math.sqrt(6./5.))
+        xw[2] = -xw[1]
+        xw[3] = -xw[0]
+        w[0] = (18.-math.sqrt(30.))/36.
+        w[1] = (18.+math.sqrt(30.))/36.
+        w[2] = w[1]
+        w[3] = w[0]
+    elif maxord == 5:
+        nw = 5;
+        xw[0] = -1./3.*math.sqrt(5.+2.*math.sqrt(10./7.))
+        xw[1] = -1./3.*math.sqrt(5.-2.*math.sqrt(10./7.))
+        xw[2] = 0
+        xw[3] = -xw[1]
+        xw[4] = -xw[0]
+        w[0] = (322-13*math.sqrt(70))/900
+        w[1] = (322+13*math.sqrt(70))/900
+        w[2] = 128/225
+        w[3] = w[1]
+        w[4] = w[0]
     else:
         print(Red+'Error: no code implemented for the desired order')
         sys.exit()
