@@ -1,6 +1,9 @@
 import sys
 import math
 import numpy as np
+import QuadParams
+import shape
+import matplotlib.pyplot as plt
 
 def FuncEval(order,el,nod,sol,psi,dpsi,dx):
     # evaluate functions
@@ -37,7 +40,7 @@ def L2_Norm(grid,sol):
     return(tmp)
 
 def ConvergencePlots(h,L2Error,H1Error,pltCnt):
-    # print('hmax = '+str(h))
+    print('hmax = '+str(h))
     # print('L2Error = '+str(L2Error))
     # print('H1Error = '+str(H1Error))
 
