@@ -16,15 +16,19 @@ struct QuadParams{
 class GaussianIntegration{
 
   public:
-    double GaussInt_2D();
-    void SetupGrid(double xMin, double xMax, int xNum, double yMin, double yMax, int yNum);
+    double GaussInt_1D(double xMin, double xMax, int xNode);
+    double GaussInt_2D(double xMin, double xMax, int xNode,
+                       double yMin, double yMax, int yNode);
+    double GaussInt_3D(double xMin, double xMax, int xNode,
+                       double yMin, double yMax, int yNode,
+                       double zMin, double zMax, int zNode);
 
   private:
+    double TestFun1D(double x);
+    double TestFun2D(double x, double y);
+    double TestFun3D(double x, double y, double z);
     std::vector<double> linspace(double a, double b, int NumElem);
     QuadParams getQPs(int maxord, QuadParams qps);
-    double TestFun(double x, double y);
-    std::vector<double> xVec;
-    std::vector<double> yVec;
 };
 
 #endif
