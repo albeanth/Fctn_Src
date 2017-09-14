@@ -1,6 +1,6 @@
 
 // Module Name
-%module GaussInt2D
+%module GaussInt
 
 // ************************************************************
 // Module Includes

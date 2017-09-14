@@ -4,6 +4,8 @@ working_dir/
 __pycache__
 build/
 
+*_wrap.cpp
+
 *.aux
 *.log
 *.synctex.gz

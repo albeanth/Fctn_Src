@@ -3,20 +3,40 @@
 
 using namespace std;
 
-double GaussianIntegration::TestFun(double x, double y){
+double GaussianIntegration::TestFun1D(double x){
+  return cos(x);
+}
+double GaussianIntegration::GaussInt_1D (double xMin, double xMax, int xNode){
+  std::vector<double> xRange;
+  xRange = linspace(xMin, xMax, xNode);
+  QuadParams qps;
+  qps = getQPs(2, qps);
+
+  double u_h;
+  u_h = 0.0;
+  double xL,xR,dx,x;
+  for (unsigned int idx=0; idx<xRange.size()-1; idx++){
+    xL = xRange[idx];
+    xR = xRange[idx+1];
+    dx = (xR-xL)/2.;
+
+    for (int l1=0; l1<qps.nw; l1++){
+      x = xL + (1 + qps.xw[l1])*dx;
+      //complete integrations
+      u_h += TestFun1D(x) *qps.w[l1]*dx;
+      }
+    }
+  return u_h;
+}
+
+double GaussianIntegration::TestFun2D(double x, double y){
   return cos(x*y);
 }
-
-void GaussianIntegration::SetupGrid(double xMin, double xMax, int xNum, double yMin, double yMax, int yNum){
-  xVec = linspace(xMin, xMax,xNum);
-  yVec = linspace(yMin, yMax, yNum);
-}
-
-double GaussianIntegration::GaussInt_2D ( ){
+double GaussianIntegration::GaussInt_2D (double xMin, double xMax, int xNode, double yMin, double yMax, int yNode){
   std::vector<double> xRange;
   std::vector<double> yRange;
-  xRange = xVec;
-  yRange = yVec;
+  xRange = linspace(xMin, xMax, xNode);
+  yRange = linspace(yMin, yMax, yNode);
   QuadParams qps;
   qps = getQPs(2, qps);
 
@@ -40,7 +60,57 @@ double GaussianIntegration::GaussInt_2D ( ){
         for (int l2=0; l2<qps.nw; l2++){
           y = yL + (1 + qps.xw[l2])*dy;
           //complete integrations
-          u_h += TestFun(x,y) *qps.w[l1]*dx*qps.w[l2]*dy;
+          u_h += TestFun2D(x,y) *qps.w[l1]*dx*qps.w[l2]*dy;
+        }
+      }
+    }
+  }
+  return u_h;
+}
+
+double GaussianIntegration::TestFun3D(double x, double y, double z){
+  return cos(x*y*z);
+}
+double GaussianIntegration::GaussInt_3D (double xMin, double xMax, int xNode, double yMin, double yMax, int yNode, double zMin, double zMax, int zNode){
+  std::vector<double> xRange;
+  std::vector<double> yRange;
+  std::vector<double> zRange;
+  xRange = linspace(xMin, xMax, xNode);
+  yRange = linspace(yMin, yMax, yNode);
+  zRange = linspace(zMin, zMax, zNode);
+  QuadParams qps;
+  qps = getQPs(2, qps);
+
+  double u_h;
+  u_h = 0.0;
+  double xL,xR,dx,x;
+  double yL,yR,dy,y;
+  double zL,zR,dz,z;
+  for (unsigned int idx=0; idx<xRange.size()-1; idx++){
+    xL = xRange[idx];
+    xR = xRange[idx+1];
+    dx = (xR-xL)/2.;
+    for (int l1=0; l1<qps.nw; l1++){
+      x = xL + (1 + qps.xw[l1])*dx;
+
+      for (unsigned int idy=0; idy<yRange.size()-1; idy++){
+        yL = yRange[idy];
+        yR = yRange[idy+1];
+        dy = (yR-yL)/2.;
+        for (int l2=0; l2<qps.nw; l2++){
+          y = yL + (1 + qps.xw[l2])*dy;
+
+          for (unsigned int idz=0; idz<zRange.size()-1; idz++){
+            zL = zRange[idz];
+            zR = zRange[idz+1];
+            dz = (zR-zL)/2;
+            for (int l3=0; l3<qps.nw; l3++){
+              z = zL + (1 + qps.xw[l3])*dz;
+
+              //complete integrations
+              u_h += TestFun3D(x,y,z) *qps.w[l1]*dx *qps.w[l2]*dy *qps.w[l3]*dz;
+            }
+          }
         }
       }
     }
