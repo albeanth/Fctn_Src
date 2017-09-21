@@ -12,7 +12,7 @@ int main()
   // Get instance of class
   GaussianIntegration mytest;
 
-  // Initialize data
+  // Initialize dummy mesh data
   char flag;
   int nels;
   vector<int> order;
@@ -37,10 +37,30 @@ int main()
   }
   maxord = 2;
 
-  // run c function
+  // Initialize dummy FE coeffs
+  vector<vector<double> > X; vector<vector<double> > Y; vector<vector<double> > T;
+  for (int i=0; i<2; i++ ){
+    X.push_back(vector<double>() );
+    Y.push_back(vector<double>() );
+    T.push_back(vector<double>() );
+    for (int j=0; j<nels; j++){
+      X[i].push_back((double)rand());
+      Y[i].push_back((double)rand());
+      T[i].push_back((double)rand());
+    }
+  }
+
+  // test source integrator
   vector<double> v;
   v = mytest.Source_Integrate(flag,
           nels, order, nod, xnod, maxord,
           nels, order, nod, xnod, maxord,
           nels, order, nod, xnod, maxord);
+
+  // test error integrator
+  vector<double> error;
+  error = mytest.Error_Integrate3D(X, Y, T,
+            nels, order, nod, xnod, maxord,
+            nels, order, nod, xnod, maxord,
+            nels, order, nod, xnod, maxord);
 }

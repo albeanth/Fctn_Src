@@ -17,6 +17,11 @@ struct QuadParams{
   std::vector<double> w;
 };
 
+struct ShapeFunction{
+  std::vector<double> psi;
+  std::vector<double> dpsi;
+};
+
 class GaussianIntegration{
 
   public:
@@ -25,6 +30,11 @@ class GaussianIntegration{
                         int nelsA, std::vector<int> orderA, std::vector< std::vector< int > > nodA, std::vector< double > xnodA, int maxordA,
                         int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
                         int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC);
+    std::vector<double> Error_Integrate3D(
+      std::vector< std::vector< double > > X, std::vector< std::vector< double > > Y, std::vector< std::vector< double > > T,
+      int nelsA, std::vector<int> orderA, std::vector< std::vector< int > > nodA, std::vector< double > xnodA, int maxordA,
+      int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
+      int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC);
   private:
     double MMS_Source(double a, double b, double c);
     double phi_fun(double x, double y, double t);
@@ -37,6 +47,7 @@ class GaussianIntegration{
     double SigAbs(double x, double y);
     double v=1.5;
     QuadParams getQPs(int maxord, QuadParams qps);
+    ShapeFunction getShapeFuns(double x, int n, ShapeFunction shape);
 
 };
 
