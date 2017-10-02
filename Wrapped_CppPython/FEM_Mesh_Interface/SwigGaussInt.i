@@ -2,7 +2,7 @@
 %module GaussInt
 
 %{
-#include "Mesh_Interface.h"
+#include "Mesh_InterfaceXYT.h"
 %}
 
 %include "std_vector.i"
@@ -14,4 +14,4 @@ namespace std {
 %template(ArrayDouble) vector < vector < double> >;
 }
 
-%include "Mesh_Interface.h"
+%include "Mesh_InterfaceXYT.h"

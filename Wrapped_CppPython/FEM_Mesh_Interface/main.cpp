@@ -21,7 +21,7 @@ int main()
   int maxord;
 
   flag = 'x';
-  nels = 100;
+  nels = 10;
   for (int i=0; i<nels; i++){
     order.push_back(2);
   }
@@ -51,13 +51,14 @@ int main()
   }
 
   // test source integrator
-  vector<double> v;
-  v = mytest.Source_Integrate(flag,
-          nels, order, nod, xnod, maxord,
-          nels, order, nod, xnod, maxord,
-          nels, order, nod, xnod, maxord);
+  // vector<double> v;
+  // v = mytest.Source_Integrate(flag,
+  //         nels, order, nod, xnod, maxord,
+  //         nels, order, nod, xnod, maxord,
+  //         nels, order, nod, xnod, maxord);
 
   // test error integrator
+  cout << "here" << endl;
   vector<double> error;
   error = mytest.Error_Integrate3D(X, Y, T,
             nels, order, nod, xnod, maxord,

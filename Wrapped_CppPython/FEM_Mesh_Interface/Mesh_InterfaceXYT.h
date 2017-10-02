@@ -1,5 +1,5 @@
-#ifndef Mesh_Interface
-#define Mesh_Interface_h 1
+#ifndef Mesh_InterfaceXYT
+#define Mesh_InterfaceXYT_h 1
 
 #include <iostream>
 #include <vector>
@@ -44,8 +44,12 @@ class GaussianIntegration{
     double phi_pyy(double x, double y, double t);
     double phi_pt(double x, double y);
     double D(double x, double y);
+    double D_px(double y);
+    double D_py(double x);
     double SigAbs(double x, double y);
     double v=1.5;
+    double Xbnd = M_PI;
+    double Ybnd = M_PI;
     QuadParams getQPs(int maxord, QuadParams qps);
     ShapeFunction getShapeFuns(double x, int n, ShapeFunction shape);
 
