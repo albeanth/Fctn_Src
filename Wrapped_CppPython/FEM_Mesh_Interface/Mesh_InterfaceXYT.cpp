@@ -25,7 +25,7 @@ vector<double> GaussianIntegration::Error_Integrate3D(
   double cL; double cR; double dc; double c; int mynumY; ShapeFunction Yshape;
   vector<double> l2Error;
   double tmp_pgd; double tmpEnr_pgd;
-  double tmp_diff; double pgd_int; double ref_int; double tmpRef_int;
+  double tmp_diff; double pgd_int; double ref_int;
 
   printf("    on enrichment number...\n");
   pgd_int = 0.0;
@@ -60,7 +60,7 @@ vector<double> GaussianIntegration::Error_Integrate3D(
                     c = cL + (1.0+qpsC.xw[l3])*dc;
                     Yshape = getShapeFuns(qpsC.xw[l3], orderC[Cel], Yshape);
 
-                    tmp_pgd = 0.0; tmpEnr_pgd = 0.0; tmpRef_int = 0.0;
+                    tmp_pgd = 0.0; tmpEnr_pgd = 0.0;
                     for (int k3 = 0; k3<orderC[Cel]; k3++){
                       mynumY = nodC[Cel][k3];
 
@@ -68,12 +68,11 @@ vector<double> GaussianIntegration::Error_Integrate3D(
                       for (int ide = enr; ide >= 0; ide--){
                         tmpEnr_pgd = tmpEnr_pgd + X[ide][mynumX]*Y[ide][mynumY]*T[ide][mynumT] *Tshape.psi[k1]*Xshape.psi[k2]*Yshape.psi[k3];
                       }
-                      tmpRef_int = tmpRef_int + phi_fun(xnodB[mynumX],xnodC[mynumY],xnodA[mynumT]) *Tshape.psi[k1]*Xshape.psi[k2]*Yshape.psi[k3];
                     }
                     // complete integration over element
-                    pgd_int = pgd_int + tmp_pgd                          *qpsA.w[l1]*da *qpsB.w[l2]*db *qpsC.w[l3]*dc;
-                    ref_int = ref_int + tmpRef_int                       *qpsA.w[l1]*da *qpsB.w[l2]*db *qpsC.w[l3]*dc;
-                    tmp_diff = tmp_diff + pow( tmpEnr_pgd-tmpRef_int, 2) *qpsA.w[l1]*da *qpsB.w[l2]*db *qpsC.w[l3]*dc;
+                    pgd_int = pgd_int + tmp_pgd                       *qpsA.w[l1]*da *qpsB.w[l2]*db *qpsC.w[l3]*dc; //total PGD over all enr steps
+                    ref_int = ref_int + phi_fun(b,c,a)                *qpsA.w[l1]*da *qpsB.w[l2]*db *qpsC.w[l3]*dc;
+                    tmp_diff = tmp_diff + pow( pgd_int-ref_int, 2) *qpsA.w[l1]*da *qpsB.w[l2]*db *qpsC.w[l3]*dc;
                   }
                 }
               }
@@ -88,62 +87,55 @@ vector<double> GaussianIntegration::Error_Integrate3D(
   return l2Error;
 }
 
-double GaussianIntegration::Source_Integrate(char flag, vector<double> B_tmp, vector<double> C_tmp,
-                    double da, vector<int> orderA, vector< vector< int > > nodA, vector< double > xnodA, int Ael, vector<double> Apsi,
+double GaussianIntegration::Source_Integrate(char flag, vector<double> B_tmp, vector<double> C_tmp, double a,
                     int nelsB, vector<int> orderB, vector< vector< int > > nodB, vector< double > xnodB, int maxordB,
                     int nelsC, vector<int> orderC, vector< vector< int > > nodC, vector< double > xnodC, int maxordC){
   QuadParams qpsB;
   qpsB = getQPs(maxordB, qpsB);
   QuadParams qpsC;
   qpsC = getQPs(maxordC, qpsC);
-  double u_h;
-  int mynumA;
   double bL; double bR; double db; double b; int mynumB; ShapeFunction Bshape;
   double cL; double cR; double dc; double c; int mynumC; ShapeFunction Cshape;
 
-  double tmp_hval; double tmp_src;
+  double tmp_hval;
+  double u_h;
   u_h = 0.0;
-  for (int k1 = 0; k1<orderA[Ael]; k1++){
-    mynumA = nodA[Ael][k1];
+  for (int Bel=0; Bel<nelsB; Bel++){
+    bL = xnodB[nodB[Bel][0]];
+    bR = xnodB[nodB[Bel][orderB[Bel]-1]];
+    db = (bR-bL)/2.0;
+    for (int l2=0; l2<qpsB.nw; l2++){
+      b = bL + (1.0+qpsB.xw[l2])*db;
+      Bshape = getShapeFuns(qpsB.xw[l2], orderB[Bel], Bshape);
+      for (int k2 = 0; k2<orderB[Bel]; k2++){
+        mynumB = nodB[Bel][k2];
 
-    for (int Bel=0; Bel<nelsB; Bel++){
-      bL = xnodB[nodB[Bel][0]];
-      bR = xnodB[nodB[Bel][orderB[Bel]-1]];
-      db = (bR-bL)/2.0;
-      for (int l2=0; l2<qpsB.nw; l2++){
-        b = bL + (1.0+qpsB.xw[l2])*db;
-        Bshape = getShapeFuns(qpsB.xw[l2], orderB[Bel], Bshape);
-        for (int k2 = 0; k2<orderB[Bel]; k2++){
-          mynumB = nodB[Bel][k2];
+        for(int Cel=0; Cel<nelsC; Cel++){
+          cL = xnodC[nodC[Cel][0]];
+          cR = xnodC[nodC[Cel][orderC[Cel]-1]];
+          dc = (cR-cL)/2.0;
+          for (int l3=0; l3<qpsC.nw; l3++){
+            c = cL + (1.0+qpsC.xw[l3])*dc;
+            Cshape = getShapeFuns(qpsC.xw[l3], orderC[Cel], Cshape);
 
-          for(int Cel=0; Cel<nelsC; Cel++){
-            cL = xnodC[nodC[Cel][0]];
-            cR = xnodC[nodC[Cel][orderC[Cel]-1]];
-            dc = (cR-cL)/2.0;
-            for (int l3=0; l3<qpsC.nw; l3++){
-              c = cL + (1.0+qpsC.xw[l3])*dc;
-              Cshape = getShapeFuns(qpsC.xw[l3], orderC[Cel], Cshape);
-
-              tmp_hval = 0.0; tmp_src = 0.0;
-              for (int k3 = 0; k3<orderC[Cel]; k3++){
-                mynumC = nodC[Cel][k3];
-                tmp_hval = tmp_hval + B_tmp[mynumB]*C_tmp[mynumC] *Apsi[k1]*Bshape.psi[k2]*Cshape.psi[k3];
-                if (flag == 'x'){
-                  tmp_src = tmp_src + MMS_Source(xnodA[mynumA],xnodB[mynumB],xnodC[mynumC]) *Apsi[k1]*Bshape.psi[k2]*Cshape.psi[k3];
-                }
-                else if (flag == 'y'){
-                  tmp_src = tmp_src + MMS_Source(xnodB[mynumB],xnodA[mynumA],xnodC[mynumC]) *Apsi[k1]*Bshape.psi[k2]*Cshape.psi[k3];
-                }
-                else if (flag == 't'){
-                  tmp_src = tmp_src + MMS_Source(xnodB[mynumB],xnodC[mynumC],xnodA[mynumA]) *Apsi[k1]*Bshape.psi[k2]*Cshape.psi[k3];
-                }
-                else{
-                  cout << "Unknown spatial dimension flag in spatial source. \n Quitting." << endl;
-                  exit(1);
-                }
-              }
-              // complete integration over element
-              u_h = u_h + tmp_src*tmp_hval * qpsB.w[l2]*db *qpsC.w[l3]*dc;
+            tmp_hval = 0.0;
+            for (int k3 = 0; k3<orderC[Cel]; k3++){
+              mynumC = nodC[Cel][k3];
+              tmp_hval = tmp_hval + B_tmp[mynumB]*C_tmp[mynumC] *Bshape.psi[k2]*Cshape.psi[k3];
+            }
+            // complete integration over element
+            if (flag == 'x'){
+              u_h = u_h + tmp_hval*MMS_Source(a,b,c) * qpsB.w[l2]*db *qpsC.w[l3]*dc;
+            }
+            else if (flag == 'y'){
+              u_h = u_h + tmp_hval*MMS_Source(b,a,c) * qpsB.w[l2]*db *qpsC.w[l3]*dc;
+            }
+            else if (flag == 't'){
+              u_h = u_h + tmp_hval*MMS_Source(b,c,a) * qpsB.w[l2]*db *qpsC.w[l3]*dc;
+            }
+            else{
+              cout << "Unknown spatial dimension flag in spatial source. \n Quitting." << endl;
+              exit(1);
             }
           }
         }
@@ -193,29 +185,6 @@ double GaussianIntegration::SigAbs(double x, double y){
   return ((Xbnd-x)*(Ybnd-y)) + 1.0;
 }
 
-void GaussianIntegration::Get2DInfo(int nels, vector<int> order, vector< vector< int > > nod, vector< double > xnod, int maxord){
-  cout << "print nels" << endl << nels <<endl;
-
-  cout << "print order" << endl;
-  for (unsigned long i=0; i<order.size(); i++){
-    printf("%d\n", order[i]);
-  }
-
-  cout << "print nod" << endl;
-  for (unsigned long i=0; i<nod.size(); i++){
-    for (unsigned long j = 0; j<nod[i].size(); j++){
-      printf("%d, ",nod[i][j]);
-    }
-    printf("\n");
-  }
-
-  cout << "print xnod" << endl;
-  for (unsigned long i=0; i<xnod.size(); i++){
-    printf("%f\n", xnod[i]);
-  }
-
-  cout << "print maxord" << endl << maxord << endl;
-}
 QuadParams GaussianIntegration::getQPs(int maxord, QuadParams qps){
   int nw;
   vector<double> xw;

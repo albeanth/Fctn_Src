@@ -25,9 +25,7 @@ struct ShapeFunction{
 class GaussianIntegration{
 
   public:
-    void Get2DInfo(int nels, std::vector<int> order, std::vector< std::vector< int > > nod, std::vector< double > xnod, int maxord);
-    double Source_Integrate(char flag, std::vector<double> B_tmp, std::vector<double> C_tmp,
-                        double da, std::vector<int> orderA, std::vector< std::vector< int > > nodA, std::vector< double > xnodA, int Ael, std::vector<double> Apsi,
+    double Source_Integrate(char flag, std::vector<double> B_tmp, std::vector<double> C_tmp, double a,
                         int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
                         int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC);
     std::vector<double> Error_Integrate3D(
