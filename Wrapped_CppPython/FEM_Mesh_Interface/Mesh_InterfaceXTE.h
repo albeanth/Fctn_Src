@@ -25,9 +25,7 @@ struct ShapeFunction{
 class GaussianIntegration{
 
   public:
-    void Get2DInfo(int nels, std::vector<int> order, std::vector< std::vector< int > > nod, std::vector< double > xnod, int maxord);
-    std::vector<double> Source_Integrate(char flag,
-                        int nelsA, std::vector<int> orderA, std::vector< std::vector< int > > nodA, std::vector< double > xnodA, int maxordA,
+    double Source_Integrate(char flag, std::vector<double> B_tmp, std::vector<double> C_tmp, double a,
                         int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
                         int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC);
     std::vector<double> Error_Integrate3D(
@@ -35,8 +33,14 @@ class GaussianIntegration{
       int nelsA, std::vector<int> orderA, std::vector< std::vector< int > > nodA, std::vector< double > xnodA, int maxordA,
       int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
       int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC);
+      std::vector<double> Error_Integrate3D_New(
+        std::vector< std::vector< double > > X, std::vector< std::vector< double > > T, std::vector< std::vector< double > > E,
+        int nelsA, std::vector<int> orderA, std::vector< std::vector< int > > nodA, std::vector< double > xnodA, int maxordA,
+        int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
+        int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC);
   private:
-    double MMS_Source(double a, double b, double c);
+    double MMS_Source(double x, double t, double E);
+    double Q(double E);
     double phi_fun(double x, double t, double E);
     double phi_px(double x, double t, double E);
     double phi_pxx(double x, double t, double E);

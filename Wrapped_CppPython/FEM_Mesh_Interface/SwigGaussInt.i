@@ -1,8 +1,8 @@
 // Module Name
-%module GaussInt
+%module GaussInt_XTE
 
 %{
-#include "Mesh_InterfaceXYT.h"
+#include "Mesh_InterfaceXTE.h"
 %}
 
 %include "std_vector.i"
@@ -14,4 +14,4 @@ namespace std {
 %template(ArrayDouble) vector < vector < double> >;
 }
 
-%include "Mesh_InterfaceXYT.h"
+%include "Mesh_InterfaceXTE.h"
