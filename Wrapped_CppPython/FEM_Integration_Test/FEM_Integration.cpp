@@ -34,9 +34,10 @@ double GaussianIntegration::Error_Integrate1D(vector<double> FEMSoln, int nelsA,
       // complete integration over element
       uh_int = uh_int + tmp_uh *qpsA.w[l1]*da;
       ref_int = ref_int + ExactFun(a) *qpsA.w[l1]*da;
-      diff = diff + pow( uh_int-ref_int, 2) *qpsA.w[l1]*da;
+      // diff = diff + pow( uh_int-ref_int, 2) *qpsA.w[l1]*da;
     }
   }
+  diff = pow( uh_int-ref_int, 2);
   printf("    u_h int = %.4f, Ref Int = %.4f\n",uh_int,ref_int);
   return sqrt(diff)/sqrt(ref_int);
 }
