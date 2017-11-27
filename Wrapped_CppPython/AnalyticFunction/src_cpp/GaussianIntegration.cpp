@@ -30,7 +30,7 @@ double GaussianIntegration::GaussInt_1D (double xMin, double xMax, int xNode){
 }
 
 double GaussianIntegration::TestFun2D(double x, double y){
-  return cos(x*y);
+  return pow(y,(x+0.5))*sin(x);
 }
 double GaussianIntegration::GaussInt_2D (double xMin, double xMax, int xNode, double yMin, double yMax, int yNode){
   std::vector<double> xRange;
@@ -38,7 +38,7 @@ double GaussianIntegration::GaussInt_2D (double xMin, double xMax, int xNode, do
   xRange = linspace(xMin, xMax, xNode);
   yRange = linspace(yMin, yMax, yNode);
   QuadParams qps;
-  qps = getQPs(2, qps);
+  qps = getQPs(3, qps);
 
   double u_h;
   u_h = 0.0;
