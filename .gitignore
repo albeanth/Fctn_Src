@@ -1,14 +1,22 @@
+# General
 .DS_Store
 working_dir/
 
+# python and swig
 __pycache__
 build/
-
 *_wrap.cpp
+*.so
 
+# latex,
 *.aux
 *.log
 *.synctex.gz
 *.pdf
-
 *.eps
+
+# In FEM_Integration_Test
+test
+
+# In FEM_Integration_Test
+FEMInt.py
