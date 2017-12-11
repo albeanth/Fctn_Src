@@ -33,11 +33,11 @@ class GaussianIntegration{
       int nelsA, std::vector<int> orderA, std::vector< std::vector< int > > nodA, std::vector< double > xnodA, int maxordA,
       int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
       int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC);
-      std::vector<double> Error_Integrate3D_New(
-        std::vector< std::vector< double > > X, std::vector< std::vector< double > > T, std::vector< std::vector< double > > E,
-        int nelsA, std::vector<int> orderA, std::vector< std::vector< int > > nodA, std::vector< double > xnodA, int maxordA,
-        int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
-        int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC);
+    std::vector<double> Error_Integrate3D_New(
+      std::vector< std::vector< double > > X, std::vector< std::vector< double > > T, std::vector< std::vector< double > > E,
+      int nelsA, std::vector<int> orderA, std::vector< std::vector< int > > nodA, std::vector< double > xnodA, int maxordA,
+      int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
+      int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC);
   private:
     double MMS_Source(double x, double t, double E);
     double Q(double E);
