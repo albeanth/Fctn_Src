@@ -29,7 +29,7 @@ class GaussianIntegration{
                         int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
                         int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC);
     std::vector<double> Error_Integrate3D(
-      std::vector< std::vector< double > > X, std::vector< std::vector< double > > Y, std::vector< std::vector< double > > T,
+      std::vector< std::vector< double > > X, std::vector< std::vector< double > > T, std::vector< std::vector< double > > E,
       int nelsA, std::vector<int> orderA, std::vector< std::vector< int > > nodA, std::vector< double > xnodA, int maxordA,
       int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
       int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC);
@@ -40,16 +40,16 @@ class GaussianIntegration{
     double phi_pxx(double x, double y, double t);
     double phi_py(double x, double y, double t);
     double phi_pyy(double x, double y, double t);
-    double phi_pt(double x, double y);
+    double phi_pt(double x, double y, double t);
     double D(double x, double y);
     double D_px(double y);
     double D_py(double x);
     double SigAbs(double x, double y);
     double v=1.5;
-    // double Xbnd = M_PI;
-    // double Ybnd = M_PI;
-    double Xbnd = sqrt(2.0)*sqrt(M_PI);
-    double Ybnd = sqrt(2.0)*sqrt(M_PI);
+    double Xbnd = M_PI;
+    double Ybnd = M_PI;
+    // double Xbnd = sqrt(2.0)*sqrt(M_PI);
+    // double Ybnd = sqrt(2.0)*sqrt(M_PI);
     QuadParams getQPs(int maxord, QuadParams qps);
     ShapeFunction getShapeFuns(double x, int n, ShapeFunction shape);
 
