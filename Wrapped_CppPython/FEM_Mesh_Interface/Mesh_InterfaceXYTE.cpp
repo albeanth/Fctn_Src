@@ -352,12 +352,96 @@ h.push_back(h4); h.push_back(h5); h.push_back(h6);
 return h;
 }
 
-vector< vector< double > > UpdateG(
-        vector<double> A_tmp, double x1, int nelsA, vector<int> orderA, vector< vector< int > > nodA, vector< double > xnodA, int maxordA,
-        vector<double> B_tmp, double y1, int nelsB, vector<int> orderB, vector< vector< int > > nodB, vector< double > xnodB, int maxordB,
-        vector<double> C_tmp, double c1, int nelsC, vector<int> orderC, vector< vector< int > > nodC, vector< double > xnodC, int maxordC);
+vector< vector< double > > GaussianIntegration::UpdateG(
+        vector<double> A_tmp, double a1, int nelsA, vector<int> orderA, vector< vector< int > > nodA, vector< double > xnodA, int maxordA,
+        vector<double> B_tmp, double b1, int nelsB, vector<int> orderB, vector< vector< int > > nodB, vector< double > xnodB, int maxordB,
+        vector<double> C_tmp, double c1, int nelsC, vector<int> orderC, vector< vector< int > > nodC, vector< double > xnodC, int maxordC){
 
+  QuadParams qpsA;
+  qpsA = getQPs(maxordA, qpsA);
+  QuadParams qpsB;
+  qpsB = getQPs(maxordB, qpsB);
+  QuadParams qpsC;
+  qpsC = getQPs(maxordC, qpsC);
+  double aL; double aR; double da; double a; int mynumA; ShapeFunction Ashape;
+  double Ahval; double dAhval;
+  double bL; double bR; double db; double b; int mynumB; ShapeFunction Bshape;
+  double Bhval; double dBhval;
+  double cL; double cR; double dc; double c; int mynumC; ShapeFunction Cshape;
+  double Chval; double dChval;
 
+  vector< vector< double > > g;
+  double g1int; double g1L; double g1R;
+  double g2int; double g2L; double g2R;
+  double g3int;
+  vector<double> g1; vector<double> g2; vector<double> g3;
+
+  for (int Ael=0; Ael<nelsA; Ael++){ // for each element in dimension A, get l/r bounds, and transformation
+    aL = xnodA[nodA[Ael][0]];
+    aR = xnodA[nodA[Ael][orderA[Ael]-1]];
+    da = (aR-aL)/2.0;
+    for (int l1=0; l1<qpsA.nw; l1++){ // over the number of weights in the quadrature order
+      a = aL + (1.0+qpsA.xw[l1])*da; // get the coordinate in the real mesh
+      Ashape = getShapeFuns(qpsA.xw[l1], orderA[Ael], Ashape);
+      Ahval = 0.0; dAhval = 0.0;
+      for (int k1 = 0; k1<orderA[Ael]; k1++){
+        mynumA = nodA[Ael][k1];
+        Ahval = Ahval + A_tmp[mynumA]*Ashape.psi[k1];
+        dAhval = dAhval + A_tmp[mynumA]*Ashape.dpsi[k1]/da;
+      }
+
+      for (int Bel=0; Bel<nelsB; Bel++){
+        bL = xnodB[nodB[Bel][0]];
+        bR = xnodB[nodB[Bel][orderB[Bel]-1]];
+        db = (bR-bL)/2.0;
+        for (int l2=0; l2<qpsB.nw; l2++){
+          b = bL + (1.0+qpsB.xw[l2])*db;
+          Bshape = getShapeFuns(qpsB.xw[l2], orderB[Bel], Bshape);
+          Bhval = 0.0; dBhval = 0.0;
+          for (int k2 = 0; k2<orderB[Bel]; k2++){
+            mynumB = nodB[Bel][k2];
+            Bhval = Bhval + B_tmp[mynumB]*Bshape.psi[k2];
+            dBhval = dBhval + B_tmp[mynumB]*Bshape.dpsi[k2]/db;
+          }
+
+          for (int Cel=0; Cel<nelsC; Cel++){
+            cL = xnodC[nodC[Cel][0]];
+            cR = xnodC[nodC[Cel][orderC[Cel]-1]];
+            dc = (cR-cL)/2.0;
+            for (int l3=0; l3<qpsC.nw; l3++){
+              c = cL + (1.0+qpsC.xw[l3])*dc;
+              Cshape = getShapeFuns(qpsC.xw[l3], orderC[Cel], Cshape);
+              Chval = 0.0; dChval = 0.0;
+              for (int k3 = 0; k3<orderC[Cel]; k3++){
+                mynumC = nodC[Cel][k3];
+                Chval = Chval + C_tmp[mynumC]*Cshape.psi[k3];
+                dChval = dChval + C_tmp[mynumC]*Cshape.dpsi[k3]/dc;
+              }
+
+              // complete integration over element
+              g1int = g1int + D(a,b,c)*pow(dAhval,2.0)*pow(Bhval,2.0)*pow(Chval,2.0)  *qpsA.w[l1]*da *qpsB.w[l2]*db *qpsC.w[l3]*dc;
+              g2int = g2int + D(a,b,c)*pow(dBhval,2.0)*pow(Ahval,2.0)*pow(Chval,2.0)  *qpsA.w[l1]*da *qpsB.w[l2]*db *qpsC.w[l3]*dc;
+              g3int = g3int + SigT(a,b,c)*pow(Ahval,2.0)*pow(Bhval,2.0)*pow(Chval,2.0)*qpsA.w[l1]*da *qpsB.w[l2]*db *qpsC.w[l3]*dc;
+              if ((Ael==0) && (l1==0) && (Bel==0) && (l2==0) && (Cel==0) && (l3==0)){
+                g1L = Ahval*D(a,b,c)*dAhval;
+                g2L = Bhval*D(a,b,c)*dBhval;
+              }
+              else if ((Ael==nelsA-1) && (l1==0) && (Bel==0) && (l2==0) && (Cel==0) && (l3==0)){
+                g1R = Ahval*D(a,b,c)*dAhval;
+                g2R = Bhval*D(a,b,c)*dBhval;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  g1.push_back( (g1R - g1L)*c1*b1 - g1int );
+  g2.push_back( (g2R - g2L)*a1*c1 - g2int );
+  g3.push_back( g3int );
+  g.push_back(g1); g.push_back(g2); g.push_back(g3);
+  return(g);
+}
 
 
 
