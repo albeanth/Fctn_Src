@@ -1,8 +1,5 @@
 #include "FEM_Integration.h"
-#include <stdlib.h>
-#include <math.h>
-#include <iostream>
-
+#include <omp.h>
 using namespace std;
 
 double GaussianIntegration::Error_Integrate1D(vector<double> FEMSoln, int nelsA, vector<int> orderA, vector<vector<int> > nodA, vector<double> xnodA, int maxordA){
@@ -127,7 +124,7 @@ double GaussianIntegration::FEM_Func_Integrate_2D_Serial(vector<double> FEMSoln,
   return uh_int;
 }
 
-double GaussianIntegration::FEM_Func_Integrate_2D_Parallel(int NTRHEADS, vector<double> FEMSoln,
+double GaussianIntegration::FEM_Func_Integrate_2D_Parallel(int NTHREADS, vector<double> FEMSoln,
   int nelsA, vector<int> orderA, vector<vector<int> > nodA, vector<double> xnodA, int maxordA,
   int nelsB, vector<int> orderB, vector<vector<int> > nodB, vector<double> xnodB, int maxordB){
 
@@ -150,7 +147,7 @@ double GaussianIntegration::FEM_Func_Integrate_2D_Parallel(int NTRHEADS, vector<
   double tmp_uhA; double tmp_uhB; double uh_int;
   uh_int = 0.0;
 
-  #pragma omp parallel for default(none),shared(qpsA,qpsB),private(aL,aR,da,a,mynumA,Ashape,tmp_uhA, bL,bR,db,b,mynumB,Bshape,tmp_uhB),reduction(+:uh_int)
+#pragma omp parallel for default(none),shared(qpsA,qpsB, FEMSoln, nelsA,orderA,nodA,xnodA,maxordA, nelsB,orderB,nodB,xnodB,maxordB),private(aL,aR,da,a,mynumA,Ashape,tmp_uhA, bL,bR,db,b,mynumB,Bshape,tmp_uhB),reduction(+:uh_int)
   for(int Ael=0; Ael<nelsA; Ael++){ // for each element in dimension A, get l/r bounds, and transformation
     aL = xnodA[nodA[Ael][0]];
     aR = xnodA[nodA[Ael][orderA[Ael]-1]];

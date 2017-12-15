@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include <stdio.h>
 /*
 This interface allows for python generated 1D FEM meshes to be read into c++ via swig.
 */
