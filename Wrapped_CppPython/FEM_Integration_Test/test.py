@@ -26,7 +26,7 @@ upp = lambda x: -sin(x) #(-cos(x**2)*(2*x)**2 - sin(x**2)*2)
 k = lambda x: x+1
 kp = 1
 source = lambda x: -( kp*up(x) + k(x)*upp(x) )
-NumOfElem = [200]
+NumOfElem = [10]
 
 testGrid = SetUpGrid.CFEMGrid1D([0.0,pi],NumOfElem,1)
 FESoln = BVP.CFEM_BVP_1D(testGrid,u,source,k)

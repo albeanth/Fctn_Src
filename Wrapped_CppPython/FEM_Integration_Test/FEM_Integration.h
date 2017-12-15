@@ -27,7 +27,10 @@ class GaussianIntegration{
   public:
     double Error_Integrate1D( std::vector<double> FEMSoln, int nelsA, std::vector<int> orderA, std::vector<std::vector<int> > nodA, std::vector<double> xnodA, int maxordA);
     double FEM_Func_Integrate_1D( std::vector<double> FEMSoln, int nelsA, std::vector<int> orderA, std::vector<std::vector<int> > nodA, std::vector<double> xnodA, int maxordA);
-    double FEM_Func_Integrate_2D( std::vector<double> FEMSoln,
+    double FEM_Func_Integrate_2D_Serial( std::vector<double> FEMSoln,
+                  int nelsA, std::vector<int> orderA, std::vector<std::vector<int> > nodA, std::vector<double> xnodA, int maxordA,
+                  int nelsB, std::vector<int> orderB, std::vector<std::vector<int> > nodB, std::vector<double> xnodB, int maxordB);
+    double FEM_Func_Integrate_2D_Parallel(int NTHREADS, std::vector<double> FEMSoln,
                   int nelsA, std::vector<int> orderA, std::vector<std::vector<int> > nodA, std::vector<double> xnodA, int maxordA,
                   int nelsB, std::vector<int> orderB, std::vector<std::vector<int> > nodB, std::vector<double> xnodB, int maxordB);
   private:

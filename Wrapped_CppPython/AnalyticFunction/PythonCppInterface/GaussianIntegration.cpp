@@ -71,6 +71,8 @@ double GaussianIntegration::GaussInt_2D_Serial (double xMin, double xMax, int xN
 
 double GaussianIntegration::GaussInt_2D_Parallel (int NTHREADS, double xMin, double xMax, int xNode, double yMin, double yMax, int yNode){
 
+  omp_set_num_threads(NTHREADS);
+
   std::vector<double> xRange;
   std::vector<double> yRange;
   xRange = linspace(xMin, xMax, xNode);
@@ -159,7 +161,7 @@ double GaussianIntegration::GaussInt_3D_Serial (double xMin, double xMax, int xN
 }
 
 double GaussianIntegration::GaussInt_3D_Parallel (int NTHREADS, double xMin, double xMax, int xNode, double yMin, double yMax, int yNode, double zMin, double zMax, int zNode){
-  
+
   omp_set_num_threads(NTHREADS);
 
   std::vector<double> xRange;
@@ -177,7 +179,7 @@ double GaussianIntegration::GaussInt_3D_Parallel (int NTHREADS, double xMin, dou
   double yL,yR,dy,y;
   double zL,zR,dz,z;
 
-#pragma omp parallel for default(none),shared(xRange,yRange,zRange,qps),private(xL,xR,dx,x,yL,yR,dy,y,zL,zR,dz,z),reduction(+:u_h)
+  #pragma omp parallel for default(none),shared(xRange,yRange,zRange,qps),private(xL,xR,dx,x,yL,yR,dy,y,zL,zR,dz,z),reduction(+:u_h)
   for (unsigned int idx=0; idx<xRange.size()-1; idx++){
     xL = xRange[idx];
     xR = xRange[idx+1];

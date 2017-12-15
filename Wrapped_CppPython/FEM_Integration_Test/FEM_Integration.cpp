@@ -13,11 +13,10 @@ double GaussianIntegration::Error_Integrate1D(vector<double> FEMSoln, int nelsA,
   qpsA = getQPs(maxordA, qpsA);
   double aL; double aR; double da; double a; int mynumX; ShapeFunction Xshape;
 
-  double tmp_uh; double tmp_ref;
-  double uh_int; double ref_int;
-  double diff;
+  double tmp_uh;
+  double uh_int; double diff;
 
-  uh_int = 0.0; diff = 0.0; ref_int = 0.0;
+  uh_int = 0.0; diff = 0.0;
   for(int Ael=0; Ael<nelsA; Ael++){ // for each element in dimension A, get l/r bounds, and transformation
     aL = xnodA[nodA[Ael][0]];
     aR = xnodA[nodA[Ael][orderA[Ael]-1]];
@@ -25,21 +24,18 @@ double GaussianIntegration::Error_Integrate1D(vector<double> FEMSoln, int nelsA,
     for (int l1=0; l1<qpsA.nw; l1++){ // over the number of weights in the quadrature order
       a = aL + (1.0+qpsA.xw[l1])*da; // get the coordinate in the real mesh
       Xshape = getShapeFuns(qpsA.xw[l1], orderA[Ael], Xshape);
-
-      tmp_uh = 0.0; tmp_ref = 0.0;
+      tmp_uh = 0.0;
       for (int k1 = 0; k1<orderA[Ael]; k1++){ // over the nodes in the element based on mesh order
         mynumX = nodA[Ael][k1];
         tmp_uh = tmp_uh + FEMSoln[mynumX] *Xshape.psi[k1];
       }
       // complete integration over element
       uh_int = uh_int + tmp_uh *qpsA.w[l1]*da;
-      ref_int = ref_int + ExactFun(a) *qpsA.w[l1]*da;
-      // diff = diff + pow( uh_int-ref_int, 2) *qpsA.w[l1]*da;
+      diff = diff + pow( ExactFun(a)-tmp_uh, 2) *qpsA.w[l1]*da;
     }
   }
-  diff = pow( uh_int-ref_int, 2);
-  printf("    u_h int = %.4f, Ref Int = %.4f\n",uh_int,ref_int);
-  return sqrt(diff)/sqrt(ref_int);
+  printf("    L2 diff = %.4f, u_h Int = %.4f\n",diff,uh_int);
+  return diff;
 }
 
 double GaussianIntegration::FEM_Func_Integrate_1D(vector<double> FEMSoln, int nelsA, vector<int> orderA, vector<vector<int> > nodA, vector<double> xnodA, int maxordA){
@@ -54,7 +50,7 @@ double GaussianIntegration::FEM_Func_Integrate_1D(vector<double> FEMSoln, int ne
   qpsA = getQPs(maxordA, qpsA);
   double aL; double aR; double da; double a; int mynumX; ShapeFunction Xshape;
 
-  double tmp_uh; double tmp_fun;
+  double tmp_uh;
   double uh_int;
 
   uh_int = 0.0;
@@ -65,8 +61,7 @@ double GaussianIntegration::FEM_Func_Integrate_1D(vector<double> FEMSoln, int ne
     for (int l1=0; l1<qpsA.nw; l1++){ // over the number of weights in the quadrature order
       a = aL + (1.0+qpsA.xw[l1])*da; // get the coordinate in the real mesh
       Xshape = getShapeFuns(qpsA.xw[l1], orderA[Ael], Xshape);
-
-      tmp_uh = 0.0; tmp_fun = 0.0;
+      tmp_uh = 0.0;
       for (int k1 = 0; k1<orderA[Ael]; k1++){ // over the nodes in the element based on mesh order
         mynumX = nodA[Ael][k1];
         tmp_uh = tmp_uh + FEMSoln[mynumX] *Xshape.psi[k1];
@@ -78,7 +73,7 @@ double GaussianIntegration::FEM_Func_Integrate_1D(vector<double> FEMSoln, int ne
   return uh_int;
 }
 
-double GaussianIntegration::FEM_Func_Integrate_2D(vector<double> FEMSoln,
+double GaussianIntegration::FEM_Func_Integrate_2D_Serial(vector<double> FEMSoln,
   int nelsA, vector<int> orderA, vector<vector<int> > nodA, vector<double> xnodA, int maxordA,
   int nelsB, vector<int> orderB, vector<vector<int> > nodB, vector<double> xnodB, int maxordB){
 
@@ -132,57 +127,64 @@ double GaussianIntegration::FEM_Func_Integrate_2D(vector<double> FEMSoln,
   return uh_int;
 }
 
-// double GaussianIntegration::FEM_Func_Integrate_2D(vector<double> FEMSoln,
-//   int nelsA, vector<int> orderA, vector<vector<int> > nodA, vector<double> xnodA, int maxordA,
-//   int nelsB, vector<int> orderB, vector<vector<int> > nodB, vector<double> xnodB, int maxordB){
-//
-//   /*
-//   this fucntion is for testing the PGD source. it completes an integral over two FEM fucntions and a known analytic function.
-//   \int\int FEM*FEM*Function
-//
-//   can also be used for finding r coefficients that are integrated over x and y space.
-//   */
-//
-//   QuadParams qpsA;
-//   qpsA = getQPs(maxordA, qpsA);
-//   double aL; double aR; double da; double a; int mynumA; ShapeFunction Ashape;
-//   QuadParams qpsB;
-//   qpsB = getQPs(maxordB, qpsB);
-//   double bL; double bR; double db; double b; int mynumB; ShapeFunction Bshape;
-//
-//   double tmp_uh; double uh_int;
-//   uh_int = 0.0;
-//   for(int Ael=0; Ael<nelsA; Ael++){ // for each element in dimension A, get l/r bounds, and transformation
-//     aL = xnodA[nodA[Ael][0]];
-//     aR = xnodA[nodA[Ael][orderA[Ael]-1]];
-//     da = (aR-aL)/2.0;
-//     for (int l1=0; l1<qpsA.nw; l1++){ // over the number of weights in the quadrature order
-//       a = aL + (1.0+qpsA.xw[l1])*da; // get the coordinate in the real mesh
-//       Ashape = getShapeFuns(qpsA.xw[l1], orderA[Ael], Ashape);
-//       for (int k1 = 0; k1<orderA[Ael]; k1++){ // over the nodes in the element based on mesh order
-//         mynumA = nodA[Ael][k1];
-//
-//         for (int Bel=0; Bel<nelsB; Bel++){
-//           bL = xnodB[nodB[Bel][0]];
-//           bR = xnodB[nodB[Bel][orderB[Bel]-1]];
-//           db = (bR-bL)/2.0;
-//           for (int l2=0; l2<qpsB.nw; l2++){
-//             b = bL + (1.0+qpsB.xw[l2])*db;
-//             Bshape = getShapeFuns(qpsB.xw[l2], orderB[Bel], Bshape);
-//             tmp_uh = 0.0;
-//             for (int k2 = 0; k2<orderB[Bel]; k2++){
-//               mynumB = nodB[Bel][k2];
-//               tmp_uh = tmp_uh + FEMSoln[mynumB]*FEMSoln[mynumA] *Ashape.psi[k1]*Bshape.psi[k2];
-//             }
-//             // complete integration over element
-//             uh_int = uh_int + tmp_uh*TestFun2D(a,b) *qpsA.w[l1]*da*qpsB.w[l2]*db;
-//           }
-//         }
-//       }
-//     }
-//   }
-//   return uh_int;
-// }
+double GaussianIntegration::FEM_Func_Integrate_2D_Parallel(int NTRHEADS, vector<double> FEMSoln,
+  int nelsA, vector<int> orderA, vector<vector<int> > nodA, vector<double> xnodA, int maxordA,
+  int nelsB, vector<int> orderB, vector<vector<int> > nodB, vector<double> xnodB, int maxordB){
+
+  /*
+  this fucntion is for testing the PGD source. it completes an integral over two FEM fucntions and a known analytic function.
+  \int\int FEM*FEM*Function
+
+  can also be used for finding r coefficients that are integrated over x and y space.
+  */
+
+  omp_set_num_threads(NTHREADS);
+
+  QuadParams qpsA;
+  qpsA = getQPs(maxordA, qpsA);
+  double aL; double aR; double da; double a; int mynumA; ShapeFunction Ashape;
+  QuadParams qpsB;
+  qpsB = getQPs(maxordB, qpsB);
+  double bL; double bR; double db; double b; int mynumB; ShapeFunction Bshape;
+
+  double tmp_uhA; double tmp_uhB; double uh_int;
+  uh_int = 0.0;
+
+  #pragma omp parallel for default(none),shared(qpsA,qpsB),private(aL,aR,da,a,mynumA,Ashape,tmp_uhA, bL,bR,db,b,mynumB,Bshape,tmp_uhB),reduction(+:uh_int)
+  for(int Ael=0; Ael<nelsA; Ael++){ // for each element in dimension A, get l/r bounds, and transformation
+    aL = xnodA[nodA[Ael][0]];
+    aR = xnodA[nodA[Ael][orderA[Ael]-1]];
+    da = (aR-aL)/2.0;
+    for (int l1=0; l1<qpsA.nw; l1++){ // over the number of weights in the quadrature order
+      a = aL + (1.0+qpsA.xw[l1])*da; // get the coordinate in the real mesh
+      Ashape = getShapeFuns(qpsA.xw[l1], orderA[Ael], Ashape);
+      tmp_uhA = 0.0;
+      for (int k1 = 0; k1<orderA[Ael]; k1++){ // over the nodes in the element based on mesh order
+        mynumA = nodA[Ael][k1];
+        tmp_uhA = tmp_uhA + FEMSoln[mynumA] *Ashape.psi[k1];
+      }
+
+      for (int Bel=0; Bel<nelsB; Bel++){
+        bL = xnodB[nodB[Bel][0]];
+        bR = xnodB[nodB[Bel][orderB[Bel]-1]];
+        db = (bR-bL)/2.0;
+        for (int l2=0; l2<qpsB.nw; l2++){
+          b = bL + (1.0+qpsB.xw[l2])*db;
+          Bshape = getShapeFuns(qpsB.xw[l2], orderB[Bel], Bshape);
+          tmp_uhB = 0.0;
+          for (int k2 = 0; k2<orderB[Bel]; k2++){
+            mynumB = nodB[Bel][k2];
+            tmp_uhB = tmp_uhB + FEMSoln[mynumB]*Bshape.psi[k2];
+          }
+          // complete integration over element
+          uh_int = uh_int + tmp_uhA*tmp_uhB*TestFun2D(a,b) *qpsA.w[l1]*da*qpsB.w[l2]*db;
+        }
+      }
+    }
+  }
+  return uh_int;
+}
+
 
 double GaussianIntegration::ExactFun(double x){
   return sin(x);
@@ -280,6 +282,16 @@ ShapeFunction GaussianIntegration::getShapeFuns(double x, int n, ShapeFunction s
     dy.push_back(x-1./2.);
     dy.push_back(-2.0*x);
     dy.push_back(x+1./2.);
+  }
+  else if (n==4){
+    y.push_back( 1./16.*(-9.*pow(x,3.) + 9.*pow(x,2.) + x - 1.) );
+    y.push_back( 1./16.*(27.*pow(x,3.) - 9.*pow(x,2.) - 27.*x + 9.) );
+    y.push_back( 1./16.*(-27.*pow(x,3.) - 9.*pow(x,2.) + 27.*x + 9.) );
+    y.push_back( 1./16.*(9.*pow(x,3.) + 9.*pow(x,2.) - x - 1.) );
+    dy.push_back( 1./16.*(-27.*pow(x,2.) + 18.*x + 1. ) );
+    dy.push_back( 1./16.*(81.*pow(x,2.) - 18.*x - 27.) );
+    dy.push_back( 1./16.*(-81.*pow(x,2.) - 18.*x + 27.) );
+    dy.push_back( 1./16.*(27.*pow(x,2.) + 18.*x - 1. ) );
   }
   else{
     cout << "Order = " << n << " shape function does not exist." << endl;

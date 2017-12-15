@@ -10,6 +10,8 @@ Setup file to include c++ files as modules for use in python.
 FEMInt = Extension('_FEMInt', # name of the extension
                     sources=['SwigFEMInt.i', 'FEM_Integration.cpp'], # a list of source filenames. May be C,C++,Objective-C,SWIG
                     swig_opts=["-c++"],
+                    extra_compile_args=["-fopenmp"], # extra flag for parallel
+                    extra_link_args=["-fopenmp"],    # extra flag for parallel
                   )
 
 setup (name = 'FEMInt',
