@@ -10,6 +10,8 @@ Setup file to include c++ files as modules for use in python.
 GInt2D = Extension('_GaussInt_XTE', # name of the extension
                     sources=['SwigGaussInt.i', 'Mesh_InterfaceXTE.cpp'], # a list of source filenames. May be C,C++,Objective-C,SWIG
                     swig_opts=["-c++"],
+                    extra_compile_args=["-fopenmp"],
+                    extra_link_args=["-fopenmp"],
                   )
 
 setup (name = 'GaussInt_XTE',

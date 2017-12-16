@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include <stdio.h>
 /*
 This interface allows for python generated 1D FEM meshes to be read into c++ via swig.
 */
@@ -25,16 +26,19 @@ struct ShapeFunction{
 class GaussianIntegration{
 
   public:
-    double Source_Integrate(char flag, std::vector<double> B_tmp, std::vector<double> C_tmp, double a,
+    double Source_Integrate_Serial(char flag, std::vector<double> B_tmp, std::vector<double> C_tmp, double a,
                         int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
                         int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC);
-    std::vector<double> Error_Integrate3D(
+    double Source_Integrate_Parallel(int NUMTHREADS, char flag, std::vector<double> B_tmp, std::vector<double> C_tmp, double a,
+                        int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
+                        int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC);
+    std::vector<double> Error_Integrate3D_Serial(
       std::vector< std::vector< double > > X, std::vector< std::vector< double > > T, std::vector< std::vector< double > > E,
       int nelsA, std::vector<int> orderA, std::vector< std::vector< int > > nodA, std::vector< double > xnodA, int maxordA,
       int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
       int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC);
-    std::vector<double> Error_Integrate3D_New(
-      std::vector< std::vector< double > > X, std::vector< std::vector< double > > T, std::vector< std::vector< double > > E,
+    std::vector<double> Error_Integrate3D_Parallel(
+      int NUMTHREADS, std::vector< std::vector< double > > A, std::vector< std::vector< double > > B, std::vector< std::vector< double > > C,
       int nelsA, std::vector<int> orderA, std::vector< std::vector< int > > nodA, std::vector< double > xnodA, int maxordA,
       int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
       int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC);
