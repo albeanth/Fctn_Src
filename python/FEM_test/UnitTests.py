@@ -8,7 +8,7 @@ import QuadParams
 import shape
 import IVP_Test as IVP
 import BVP_Test as BVP
-import FunctionTests and FunT
+import FunctionTests as FunT
 try:
     from colorama import Fore, Style, init
     init(autoreset=True)
@@ -35,7 +35,7 @@ source = lambda x: cond(x)*math.sin(x) - math.cos(x) # -4*x
 cond = lambda x: x
 print(StyDim+'should converge to 2.0')
 for i,ne in enumerate(NumOfElem):
-    testGrid = SetUpGrid.CFEMGrid1D([0.0,math.pi],[ne],1)
+    testGrid = SetUpGrid.CFEMGrid1D([0.0,math.pi],[ne],3)
     FESoln = BVP.CFEM_BVP_1D(testGrid,T,source,cond)
     # BVP.plot(testGrid,FESoln)
     # sys.exit()
