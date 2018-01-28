@@ -5,7 +5,7 @@
 using namespace std;
 
 vector<double> GaussianIntegration::Error_Integrate2D(
-      int NUMTHREADS, vector< vector< double > > A, vector< vector< double > > B,
+      int selector, int NUMTHREADS, vector< vector< double > > A, vector< vector< double > > B,
       int nelsA, vector<int> orderA, vector< vector< int > > nodA, vector< double > xnodA, int maxordA,
       int nelsB, vector<int> orderB, vector< vector< int > > nodB, vector< double > xnodB, int maxordB){
 
@@ -30,7 +30,7 @@ vector<double> GaussianIntegration::Error_Integrate2D(
     vector<double> tmpEnr_pgdA(enr+1); vector<double> tmpEnr_pgdB(enr+1);
 
    #pragma omp parallel for default(none),\
-   shared(enr, qpsA,qpsB, A,B, nelsA,orderA,nodA,xnodA, nelsB,orderB,nodB,xnodB), \
+   shared(enr, qpsA,qpsB, A,B, nelsA,orderA,nodA,xnodA, nelsB,orderB,nodB,xnodB, selector), \
    private(aL,aR,da,a,Ashape,pgdA,mynumA, bL,bR,db,b,Bshape,pgdB,mynumB, tmp), \
    firstprivate(tmpEnr_pgdA, tmpEnr_pgdB),\
    reduction(+:diff,pgd_int,pgdEnr_int)
@@ -73,7 +73,7 @@ vector<double> GaussianIntegration::Error_Integrate2D(
               pgd_int = pgd_int + tmpEnr_pgdA[ide]*tmpEnr_pgdB[ide] *qpsA.w[l1]*da *qpsB.w[l2]*db; //total integral PGD up to step enr
               tmp = tmp + tmpEnr_pgdA[ide]*tmpEnr_pgdB[ide];
             }
-            diff = diff + pow( phi_fun(a,b)-tmp, 2.0) *qpsA.w[l1]*da *qpsB.w[l2]*db;
+            diff = diff + pow( phi_fun(selector,a,b)-tmp, 2.0) *qpsA.w[l1]*da *qpsB.w[l2]*db;
           }
         }
       }
@@ -84,7 +84,7 @@ vector<double> GaussianIntegration::Error_Integrate2D(
   return l2Error;
 }
 
-double GaussianIntegration::Source_Integrate(int NUMTHREADS, char flag, vector<double> B_tmp, double a,
+double GaussianIntegration::Source_Integrate(int selector, int NUMTHREADS, char flag, vector<double> B_tmp, double a,
                     int nelsB, vector<int> orderB, vector< vector< int > > nodB, vector< double > xnodB, int maxordB){
 
   omp_set_num_threads(NUMTHREADS);
@@ -97,7 +97,7 @@ double GaussianIntegration::Source_Integrate(int NUMTHREADS, char flag, vector<d
   double u_h;
   u_h = 0.0;
   #pragma omp parallel for default(none),\
-  shared(qpsB, flag,a,nelsB,orderB,nodB,xnodB,B_tmp), \
+  shared(qpsB, flag,a,nelsB,orderB,nodB,xnodB,B_tmp, selector),	\
   private(bL,bR,db,b,mynumB,Bshape, tmp_hvalB), \
   reduction(+:u_h)
   for (int Bel=0; Bel<nelsB; Bel++){
@@ -115,94 +115,103 @@ double GaussianIntegration::Source_Integrate(int NUMTHREADS, char flag, vector<d
 
       // complete integration over element
       if (flag == 'x'){
-        u_h = u_h + tmp_hvalB*MMS_Source(a,b) * qpsB.w[l2]*db;
+        u_h = u_h + tmp_hvalB*MMS_Source(selector,a,b) * qpsB.w[l2]*db;
       }
       else if (flag == 't'){
-        u_h = u_h + tmp_hvalB*MMS_Source(b,a) * qpsB.w[l2]*db;
+        u_h = u_h + tmp_hvalB*MMS_Source(selector,b,a) * qpsB.w[l2]*db;
       }
     }
   }
   return u_h;
 }
 
-double GaussianIntegration::MMS_Source(double x, double t){
-  return 1.0/v*phi_pt(x,t) - ( 1.0*phi_px(x,t) + D(x)*phi_pxx(x,t) ) + SigAbs(x)*phi_fun(x,t);
+double GaussianIntegration::MMS_Source(int selector, double x, double t){
+  return 1.0/v*phi_pt(selector,x,t) - ( 1.0*phi_px(selector,x,t) + D(x)*phi_pxx(selector,x,t) ) + SigAbs(selector,x)*phi_fun(selector,x,t);
 }
-double GaussianIntegration::phi_fun(double x, double t){
+double GaussianIntegration::phi_fun(int selector, double x, double t){
+  double value;
   if (selector == 1){
-    return t*sin(x);
+    value = t*sin(x);
   }
   else if (selector == 2){
-    return t*sin(pow(x,2));
+    value = t*sin(pow(x,2));
   }
   else if (selector == 3){
-    return pow(t,x)*sin(x);
+    value = pow(t,x)*sin(x);
   }
   else if (selector == 4){
-    return t*log(x/t)*sin(x);
+    value = t*log(x/t)*sin(x);
   }
   else if (selector == 5){
-    return t*cos(t*x)*sin(x);
+    value = t*cos(t*x)*sin(x);
   }
+  return value;
 }
-double GaussianIntegration::phi_px(double x, double t){
+double GaussianIntegration::phi_px(int selector,double x, double t){
+  double value;
   if (selector == 1){
-    return t*cos(x);
+    value = t*cos(x);
   }
   else if (selector == 2){
-    return t*2*x*cos(pow(x,2));
+    value = t*2*x*cos(pow(x,2));
   }
   else if (selector == 3){
-    return pow(t,x)*(log(t)*sin(x)+cos(x));
+    value = pow(t,x)*(log(t)*sin(x)+cos(x));
   }
   else if (selector == 4){
-    return t*cos(x)*log(x/t) + t*sin(x)/x;
+    value = t*cos(x)*log(x/t) + t*sin(x)/x;
   }
   else if (selector == 5){
-    return t*cos(x)*cos(t*x) - pow(t,2.0)*sin(x)*sin(t*x);
+    value = t*cos(x)*cos(t*x) - pow(t,2.0)*sin(x)*sin(t*x);
   }
+  return value;
 }
-double GaussianIntegration::phi_pxx(double x, double t){
+double GaussianIntegration::phi_pxx(int selector,double x, double t){
+  double value;
   if (selector == 1){
-    return -t*sin(x);
+    value = -t*sin(x);
   }
   else if (selector == 2){
-    return t*2*( cos(pow(x,2)) - 2*pow(x,2)*sin(pow(x,2)) );
+    value = t*2*( cos(pow(x,2)) - 2*pow(x,2)*sin(pow(x,2)) );
   }
   else if (selector == 3){
-    return pow(-t,x)*sin(x) + pow(t,x)*pow(log(t),2)*sin(x) + 2*pow(t,x)*log(t)*cos(x);
+    value = pow(-t,x)*sin(x) + pow(t,x)*pow(log(t),2)*sin(x) + 2*pow(t,x)*log(t)*cos(x);
   }
   else if (selector == 4){
-    return 2*t*cos(x)/x - t*sin(x)/pow(x,2) - t*log(x/t)*sin(x);
+    value = 2*t*cos(x)/x - t*sin(x)/pow(x,2) - t*log(x/t)*sin(x);
   }
   else if (selector == 5){
-    return -t*cos(t*x)*sin(x) - pow(t,3.0)*cos(t*x)*sin(x) - 2*pow(t,2.0)*cos(x)*sin(t*x);
+    value = -t*cos(t*x)*sin(x) - pow(t,3.0)*cos(t*x)*sin(x) - 2*pow(t,2.0)*cos(x)*sin(t*x);
   }
+  return value;
 }
-double GaussianIntegration::phi_pt(double x){
+ double GaussianIntegration::phi_pt(int selector,double x, double t){
+  double value;
   if (selector == 1){
-    return sin(x);
+    value = sin(x);
   }
   else if (selector == 2){
-    return sin(pow(x,2));
+    value = sin(pow(x,2));
   }
   else if (selector == 3){
-    return x*pow(t,(x-1))*sin(x);
+    value = x*pow(t,(x-1))*sin(x);
   }
   else if (selector == 4){
-    return -sin(x) + log(x/t)*sin(x);
+    value = -sin(x) + log(x/t)*sin(x);
   }
   else if (selector == 5){
-    return cos(t*x)*sin(x) - t*x*sin(x)*sin(t*x);
+    value = cos(t*x)*sin(x) - t*x*sin(x)*sin(t*x);
   }
+  return value;
 }
 double GaussianIntegration::D(double x){
   return (x+1.0);
 }
-double GaussianIntegration::SigAbs(double x){
-  return ((Xend-x)+1.0);
+double GaussianIntegration::SigAbs(int selector, double x){
+  return ((Xend(selector)-x)+1.0);
 }
 double GaussianIntegration::Xend(int selector){
+  double Xend;
   if (selector == 1){
     Xend = M_PI;
   }
