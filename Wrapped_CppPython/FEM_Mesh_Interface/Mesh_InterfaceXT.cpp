@@ -129,22 +129,96 @@ double GaussianIntegration::MMS_Source(double x, double t){
   return 1.0/v*phi_pt(x) - ( 1.0*phi_px(x,t) + D(x)*phi_pxx(x,t) ) + SigAbs(x)*phi_fun(x,t);
 }
 double GaussianIntegration::phi_fun(double x, double t){
-  return t*log(x,t)*sin(x);
+  if (selector == 1){
+    return t*sin(x);
+  }
+  else if (selector == 2){
+    return t*sin(pow(x,2));
+  }
+  else if (selector == 3){
+    return pow(t,x)*sin(x);
+  }
+  else if (selector == 4){
+    return t*log(x/t)*sin(x);
+  }
+  else if (selector == 5){
+    return t*cos(t*x)*sin(x);
+  }
 }
 double GaussianIntegration::phi_px(double x, double t){
-  return t*cos(x)*log(x/t) + t*sin(x)/x;
+  if (selector == 1){
+    return t*cos(x);
+  }
+  else if (selector == 2){
+    return t*2*x*cos(pow(x,2));
+  }
+  else if (selector == 3){
+    return pow(t,x)*(log(t)*sin(x)+cos(x));
+  }
+  else if (selector == 4){
+    return t*cos(x)*log(x/t) + t*sin(x)/x;
+  }
+  else if (selector == 5){
+    return t*cos(x)*cos(t*x) - pow(t,2.0)*sin(x)*sin(t*x);
+  }
 }
 double GaussianIntegration::phi_pxx(double x, double t){
-  return 2.0*t*cos(x)/x - t*sin(x)/pow(x,2) - t*log(x/t)*sin(x);
+  if (selector == 1){
+    return -t*sin(x);
+  }
+  else if (selector == 2){
+    return t*2*( cos(pow(x,2)) - 2*pow(x,2)*sin(pow(x,2)) );
+  }
+  else if (selector == 3){
+    return pow(-t,x)*sin(x) + pow(t,x)*pow(log(t),2)*sin(x) + 2*pow(t,x)*log(t)*cos(x);
+  }
+  else if (selector == 4){
+    return 2*t*cos(x)/x - t*sin(x)/pow(x,2) - t*log(x/t)*sin(x);
+  }
+  else if (selector == 5){
+    return -t*cos(t*x)*sin(x) - pow(t,3.0)*cos(t*x)*sin(x) - 2*pow(t,2.0)*cos(x)*sin(t*x);
+  }
 }
 double GaussianIntegration::phi_pt(double x){
-  return -sin(x) + log(x/t)*sin(x);
+  if (selector == 1){
+    return sin(x);
+  }
+  else if (selector == 2){
+    return sin(pow(x,2));
+  }
+  else if (selector == 3){
+    return x*pow(t,(x-1))*sin(x);
+  }
+  else if (selector == 4){
+    return -sin(x) + log(x/t)*sin(x);
+  }
+  else if (selector == 5){
+    return cos(t*x)*sin(x) - t*x*sin(x)*sin(t*x);
+  }
 }
 double GaussianIntegration::D(double x){
   return (x+1.0);
 }
 double GaussianIntegration::SigAbs(double x){
   return ((Xend-x)+1.0);
+}
+double GaussianIntegration::Xend(int selector){
+  if (selector == 1){
+    Xend = M_PI;
+  }
+  else if (selector == 2){
+    Xend = 2.0*sqrt(2.0)*sqrt(M_PI);
+  }
+  else if (selector == 3){
+    Xend = M_PI;
+  }
+  else if (selector == 4){
+    Xend = 3.0*M_PI;
+  }
+  else if (selector == 5){
+    Xend = 3.0*M_PI;
+  }
+  return Xend;
 }
 
 QuadParams GaussianIntegration::getQPs(int maxord, QuadParams qps){

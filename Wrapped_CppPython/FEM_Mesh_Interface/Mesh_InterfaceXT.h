@@ -34,14 +34,14 @@ class GaussianIntegration{
       int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB);
   private:
     double MMS_Source(double x, double t);
-    double phi_fun(double x, double t);
-    double phi_px(double x, double t);
-    double phi_pxx(double x, double t);
-    double phi_pt(double x);
+    double phi_fun(int selector, double x, double t);
+    double phi_px(int selector, double x, double t);
+    double phi_pxx(int selector, double x, double t);
+    double phi_pt(int selector, double x);
     double D(double x);
     double SigAbs(double x);
+    double Xend(int selector);
     const double v=1.5;
-    const double Xend = M_PI;
     QuadParams getQPs(int maxord, QuadParams qps);
     ShapeFunction getShapeFuns(double x, int n, ShapeFunction shape);
 
