@@ -146,7 +146,7 @@ double GaussianIntegration::phi_pxx(double x, double t){
   //return -t*sin(x);
   //return -pow(t,x)*sin(x) + pow(t,x)*pow(log(t),2)*sin(x) + 2*pow(t,x)*log(t)*cos(x);
 }
- double GaussianIntegration::phi_pt(double x, double t){
+double GaussianIntegration::phi_pt(double x, double t){
   //return cos(t*x)*sin(x) - t*x*sin(x)*sin(t*x);
   //return -sin(x) + log(x/t)*sin(x);
   //return sin(x);

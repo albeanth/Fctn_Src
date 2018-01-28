@@ -14,7 +14,7 @@ except ImportError:
     Yellow = ''; Red = ''; Green = ''; Cyan = ''; Magenta = ''
     StyDim = ''
 
-def IVP_1D(time,T,source,lmbda):
+def IVP_1D(time,T,source,nu):
     '''
     This function solves a 1D initial value problem using discontinuous Galerkin finite elements.
 
@@ -76,7 +76,7 @@ def IVP_1D(time,T,source,lmbda):
         # print(Cyan+'RHS');print(f)
         # sys.exit()
 
-        mat = -k + lmbda*m
+        mat = -k + nu*m
         mat[order[el]-1,order[el]-1] = mat[order[el]-1,order[el]-1] + 1
 
         sol[nod[el,0]:nod[el,0]+order[el]] = np.linalg.solve(mat,f)
@@ -121,13 +121,13 @@ def Error(sol,time,T,Tp):
 
     return(l2Err,h1Err)
 
-def plot(time,sol,lmbda):
+def plot(time,sol):
 
-    T = lambda t: np.exp(-lmbda*t)
+    u = lambda t: np.sin(t)
 
     plt.figure(1)
     xplot = np.linspace(time.bounds[0],time.bounds[1],time.nels*10+1)
-    plt.plot(xplot,T(xplot), linewidth = 2, color = 'blue')
+    plt.plot(xplot,u(xplot), linewidth = 2, color = 'blue')
 
     nw,xw,w = QuadParams.QP(time.maxord)
     ## set mesh parameters to spatial grid
