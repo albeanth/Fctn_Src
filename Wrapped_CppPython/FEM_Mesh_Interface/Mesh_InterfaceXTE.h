@@ -53,7 +53,7 @@ class GaussianIntegration{
     double D_px(double E);
     double SigAbs(double x, double E);
     const double v=1.5;
-    const double Xend = M_PI;
+    const double Xend = 3.0*M_PI;
     QuadParams getQPs(int maxord, QuadParams qps);
     ShapeFunction getShapeFuns(double x, int n, ShapeFunction shape);
 

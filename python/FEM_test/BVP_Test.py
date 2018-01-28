@@ -77,7 +77,7 @@ def CFEM_BVP_1D(space,T,source,cond):
     sol[0] =  T(space.bounds[0])  #space.bounds[0]    # BC
     sol[-1] = T(space.bounds[1])  #space.bounds[1]      # BC
     mat = stiff
-    rhsf = np.subtract(rhsf , np.dot(mat,sol))
+    # rhsf = np.subtract(rhsf , np.dot(mat,sol))
 
     # SOLVE! (for coefficients of finite elements, still not the \emph{actual} solution)
     sol[1:-1] = np.linalg.solve(mat[1:-1,1:-1],rhsf[1:-1])

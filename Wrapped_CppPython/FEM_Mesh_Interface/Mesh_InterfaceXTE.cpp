@@ -436,6 +436,16 @@ ShapeFunction GaussianIntegration::getShapeFuns(double x, int n, ShapeFunction s
     dy.push_back(-2.0*x);
     dy.push_back(x+1./2.);
   }
+  else if (n==4){
+    y.push_back( 1./16.*(-9.*pow(x,3) + 9.*pow(x,2) + x - 1.) );
+    y.push_back( 1./16.*(27.*pow(x,3) - 9.*pow(x,2) - 27.*x + 9.) );
+    y.push_back( 1./16.*(-27.*pow(x,3) - 9.*pow(x,2) + 27.*x + 9.) );
+    y.push_back( 1./16.*(9.*pow(x,3) + 9.*pow(x,2) - x - 1.) );
+    dy.push_back( 1./16.*(-27.*pow(x,2) + 18.*x + 1.) );
+    dy.push_back( 1./16.*(81.*pow(x,2) - 18.*x - 27.) );
+    dy.push_back( 1./16.*(-81.*pow(x,2) - 18.*x + 27.) );
+    dy.push_back( 1./16.*(27.*pow(x,2) + 18.*x - 1.) );
+  }
   else{
     cout << "Order = " << n << " shape function does not exist." << endl;
     exit(1);

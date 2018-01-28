@@ -1,4 +1,4 @@
-#include "Mesh_InterfaceXTE.h"
+#include "Mesh_InterfaceXT.h"
 #include <stdlib.h>
 #include <omp.h>
 
@@ -115,10 +115,10 @@ double GaussianIntegration::Source_Integrate(int NUMTHREADS, char flag, vector<d
 
       // complete integration over element
       if (flag == 'x'){
-        u_h = u_h + tmp_hvalB*tmp_hvalC*MMS_Source(a,b) * qpsB.w[l2]*db;
+        u_h = u_h + tmp_hvalB*MMS_Source(a,b) * qpsB.w[l2]*db;
       }
       else if (flag == 't'){
-        u_h = u_h + tmp_hvalB*tmp_hvalC*MMS_Source(b,a) * qpsB.w[l2]*db;
+        u_h = u_h + tmp_hvalB*MMS_Source(b,a) * qpsB.w[l2]*db;
       }
     }
   }
@@ -126,7 +126,7 @@ double GaussianIntegration::Source_Integrate(int NUMTHREADS, char flag, vector<d
 }
 
 double GaussianIntegration::MMS_Source(double x, double t){
-  return 1.0/v*phi_pt(x) - ( 1.0*phi_px(x,t) + D(x)*phi_pxx(x,t) ) + SigAbs(x)*phi_fun(x,t);
+  return 1.0/v*phi_pt(x,t) - ( 1.0*phi_px(x,t) + D(x)*phi_pxx(x,t) ) + SigAbs(x)*phi_fun(x,t);
 }
 double GaussianIntegration::phi_fun(double x, double t){
   if (selector == 1){

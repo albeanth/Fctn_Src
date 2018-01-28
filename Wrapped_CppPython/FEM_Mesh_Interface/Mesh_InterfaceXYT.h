@@ -74,10 +74,10 @@ class GaussianIntegration{
     double D_py(double x);
     double SigAbs(double x, double y);
     double v=1.5;
-    double Xbnd = M_PI;
-    double Ybnd = M_PI;
-    // double Xbnd = sqrt(2.0)*sqrt(M_PI);
-    // double Ybnd = sqrt(2.0)*sqrt(M_PI);
+    //double Xbnd = M_PI;
+    //double Ybnd = M_PI;
+    double Xbnd = sqrt(2.0)*sqrt(M_PI);
+    double Ybnd = sqrt(2.0)*sqrt(M_PI);
     QuadParams getQPs(int maxord, QuadParams qps);
     ShapeFunction getShapeFuns(double x, int n, ShapeFunction shape);
 

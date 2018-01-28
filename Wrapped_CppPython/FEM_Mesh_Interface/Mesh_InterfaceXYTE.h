@@ -5,7 +5,7 @@
 #include <vector>
 #include <stdlib.h>
 #include <math.h>
-#include <string.h>
+#include <stdio.h>
 /*
 This interface allows for python generated 1D FEM meshes to be read into c++ via swig.
 */
@@ -26,13 +26,19 @@ class GaussianIntegration{
 
   public:
     double Source_Integrate(
-            char flag, std::vector<double> B_tmp, std::vector<double> C_tmp, std::vector<double> D_tmp, double a,
+            int NUMTHREADS, char flag, std::vector<double> B_tmp, std::vector<double> C_tmp, std::vector<double> D_tmp, double a,
             int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
             int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC,
             int nelsD, std::vector<int> orderD, std::vector< std::vector< int > > nodD, std::vector< double > xnodD, int maxordD);
 
     std::vector<double> Error_Integrate4D(
-            std::vector< std::vector< double > > A, std::vector< std::vector< double > > B, std::vector< std::vector< double > > C, std::vector< std::vector< double > > D,
+            int NUMTHREADS, std::vector< std::vector< double > > A, std::vector< std::vector< double > > B, std::vector< std::vector< double > > C, std::vector< std::vector< double > > D,
+            int nelsA, std::vector<int> orderA, std::vector< std::vector< int > > nodA, std::vector< double > xnodA, int maxordA,
+            int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
+            int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC,
+            int nelsD, std::vector<int> orderD, std::vector< std::vector< int > > nodD, std::vector< double > xnodD, int maxordD);
+    std::vector<double> MMSSource_Error_4D(
+            int NUMTHREADS, std::vector< std::vector< double > > A, std::vector< std::vector< double > > B, std::vector< std::vector< double > > C, std::vector< std::vector< double > > D,
             int nelsA, std::vector<int> orderA, std::vector< std::vector< int > > nodA, std::vector< double > xnodA, int maxordA,
             int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
             int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC,
@@ -40,17 +46,17 @@ class GaussianIntegration{
 
     // functions to get functions for basis function calculations
     std::vector< std::vector< double > > UpdateH(
-            double a, double b1, double c1, std::vector<double> B_tmp, std::vector<double> C_tmp,
+            int NUMTHREADS, double a, double b1, double c1, std::vector<double> B_tmp, std::vector<double> C_tmp,
             int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
             int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC);
     std::vector< std::vector< double > > UpdateH_Enr(
-            double a, double b2, double c2, std::vector<double> B_tmp, std::vector<double> C_tmp, std::vector< std::vector< double > > B, std::vector< std::vector< double > > C,
+            int NUMTHREADS, double a, std::vector<double> b2, std::vector<double> c2, std::vector<double> B_tmp, std::vector<double> C_tmp, std::vector< std::vector< double > > B, std::vector< std::vector< double > > C,
             int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
             int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC);
-    std::vector< std::vector< double > > UpdateG(
-            std::vector<double> A_tmp, double a1, int nelsA, std::vector<int> orderA, std::vector< std::vector< int > > nodA, std::vector< double > xnodA, int maxordA,
-            std::vector<double> B_tmp, double b1, int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
-            std::vector<double> C_tmp, double c1, int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC);
+    // std::vector< std::vector< double > > UpdateG(
+    //         int NUMTHREADS, std::vector<double> A_tmp, double a1, int nelsA, std::vector<int> orderA, std::vector< std::vector< int > > nodA, std::vector< double > xnodA, int maxordA,
+    //         std::vector<double> B_tmp, double b1, int nelsB, std::vector<int> orderB, std::vector< std::vector< int > > nodB, std::vector< double > xnodB, int maxordB,
+    //         std::vector<double> C_tmp, double c1, int nelsC, std::vector<int> orderC, std::vector< std::vector< int > > nodC, std::vector< double > xnodC, int maxordC);
 
 
   private:
