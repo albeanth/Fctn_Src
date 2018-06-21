@@ -1,8 +1,8 @@
 // Module Name
-%module GaussInt_XT
+%module GaussInt_ThWave
 
 %{
-#include "Mesh_InterfaceXT.h"
+#include "ThermalWave_Interface.h"
 %}
 
 %include "std_vector.i"
@@ -14,4 +14,4 @@ namespace std {
 %template(ArrayDouble) vector < vector < double> >;
 }
 
-%include "Mesh_InterfaceXT.h"
+%include "ThermalWave_Interface.h"
