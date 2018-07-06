@@ -20,3 +20,6 @@ test
 
 # In FEM_Integration_Test
 FEMInt.py
+
+# in c++ GSL tests
+*.*~
