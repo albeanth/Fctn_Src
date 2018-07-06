@@ -1,11 +1,12 @@
 // Module Name
-%module ODEInt
+%module InterpTest
 
 %{
-#include "Class_Test.h"
+#include "Interp_Test.h"
 %}
 
 %include "std_vector.i"
+%include "std_string.i"
 
 namespace std {
 %template(LineInt)     vector < int >;
@@ -14,4 +15,4 @@ namespace std {
 %template(ArrayDouble) vector < vector < double> >;
 }
 
-%include "Class_Test.h"
+%include "Interp_Test.h"

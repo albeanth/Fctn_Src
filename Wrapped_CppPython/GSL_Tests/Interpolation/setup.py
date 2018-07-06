@@ -7,8 +7,8 @@ Setup file to include c++ files as modules for use in python.
               Otherwise, it will put it inside a build hierarchy, and you'd have to move it to use it.
 '''
 
-ODEInt = Extension(name = '_ODEInt', # name of the extension
-                    sources=['Class_Test.i', 'Class_Test.cpp'], # a list of source filenames. May be C,C++,Objective-C,SWIG
+InterpTest = Extension(name = '_InterpTest', # name of the library (.so file) made
+                    sources=['Interp_Test.i', 'Interp_Test.cpp'], # a list of source filenames. May be C,C++,Objective-C,SWIG
                     swig_opts=['-c++',],
                     include_dirs=['/usr/local/include'],
                     library_dirs=['/usr/local/lib'],
@@ -17,8 +17,8 @@ ODEInt = Extension(name = '_ODEInt', # name of the extension
                     # extra_compile_args=['-fopenmp'],
                     )
 
-setup(name = 'ODEInt',
-      ext_modules = [ODEInt],
+setup(name = 'InterpTest',
+      ext_modules = [InterpTest],
       author      = 'Tony_Alberti',
-      description = 'ODE_Solver_Test',
+      description = 'Interpolation_Test',
       )
