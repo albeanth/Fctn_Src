@@ -2,12 +2,12 @@
 
 int ODE_fun(double t, const double y[], double f[], void *params){
   (void)(t); /* avoid unused parameter warning */
-  double mu = *(double *)params;
-  f[0] = -mu*y[0];
+  Params * mymus = static_cast<Params*>(params);
+  f[0] = -(mymus->mu0+mymus->mu1)*y[0];
   return GSL_SUCCESS;
 }
 
-Solution ODEClass_Test::compute_ODE(std::vector<double> TBnds, int dim, double RelTol, double AbsTol, double mu){
+Solution ODEClass_Test::compute_ODE(std::vector<double> TBnds, int dim, double RelTol, double AbsTol, Params mu){// double mu){
   // function to compute function in ODE_fun
   printf("Computing ODE...\n");
 
