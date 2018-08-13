@@ -12,9 +12,29 @@ struct Solution{
 struct Params{
   double mu0;
   double mu1;
+  double mu3;
 };
 
 class ODEClass_Test{
   public:
-    Solution compute_ODE(std::vector<double> TBnds, int dim, double RelTolm, double AbsTol, Params mus);//double mu);
+    ODEClass_Test(){
+      mymus.mu0 = 0.35;
+      mymus.mu1 = 0.15;
+    }
+    Params mymus;
+    double tmp = 1.0;
+    // double mu0 = 0.35;
+    // double mu1 = 0.15;
+    double mu3;
+    Solution compute_ODE(std::vector<double> TBnds, int dim, double RelTol, double AbsTol);
 };
+
+
+
+// gsl_odeiv2_system sys
+// {
+//     &my_model::ode_gsl
+// ,   nullptr
+// ,   chemosc.NEQ
+// ,   reinterpret_cast<void *>(::std::addressof(chemosc))
+// };

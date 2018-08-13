@@ -1,41 +1,40 @@
 #include "Class_Test.h"
 
+void adjust_mus(ODEClass_Test *test, double t){
+  test->mu3 = (test->mymus.mu0+test->mymus.mu1)/test->tmp;
+}
+
 int ODE_fun(double t, const double y[], double f[], void *params){
-  (void)(t); /* avoid unused parameter warning */
-  Params * mymus = static_cast<Params*>(params);
-  f[0] = -(mymus->mu0+mymus->mu1)*y[0];
+  ODEClass_Test * mymus = static_cast<ODEClass_Test*>(params);
+  adjust_mus(mymus, t);
+  f[0] = -(mymus->mu3)*y[0];
   return GSL_SUCCESS;
 }
 
-Solution ODEClass_Test::compute_ODE(std::vector<double> TBnds, int dim, double RelTol, double AbsTol, Params mu){// double mu){
-  // function to compute function in ODE_fun
+Solution ODEClass_Test::compute_ODE(std::vector<double> TBnds, int dim, double RelTol, double AbsTol){//, Params mu){// double mu){
   printf("Computing ODE...\n");
 
-  gsl_vector * v = gsl_vector_alloc(2);
-  gsl_vector_set(v,0,TBnds[0]);
-  gsl_vector_set(v,1,TBnds[1]);
   const gsl_odeiv2_step_type * T = gsl_odeiv2_step_rkf45;
-  gsl_odeiv2_step * s = gsl_odeiv2_step_alloc (T, dim);
-  gsl_odeiv2_control * c = gsl_odeiv2_control_y_new (RelTol, AbsTol);
-  gsl_odeiv2_evolve * e = gsl_odeiv2_evolve_alloc (dim);
-  gsl_odeiv2_system sys = {ODE_fun, NULL, dim, &mu};
+
+  gsl_odeiv2_system sys = {ODE_fun, NULL, static_cast<size_t>(dim), this};
+  gsl_odeiv2_driver *d = gsl_odeiv2_driver_alloc_y_new (&sys, T,1e-6, RelTol, AbsTol);
 
   double t = TBnds[0];
   double t1 = TBnds[1];
-  double h = 1e-6;
   double y[1] = { 1.0 };
 
+  int status;
   Solution results;
-  while (t < t1){
-      int status = gsl_odeiv2_evolve_apply (e, c, s, &sys, &t, t1, &h, y);
-      if (status != GSL_SUCCESS)
-          break;
-      results.t.push_back(t);
-      results.y.push_back(y[0]);
-      // printf ("%.5e %.5e\n", t, y[0]);
+  printf("%.12e %.12e\n", t, 1.0);
+  for (int i = 1; i<=15; i++){
+    double ti = i * t1 / 15.0;
+    int status = gsl_odeiv2_driver_apply (d, &t, ti, y);
+    if (status != GSL_SUCCESS)
+        break;
+    results.t.push_back(t);
+    results.y.push_back(y[0]);
+    printf("%.12e %.12e\n", t, y[0]);
   }
-  gsl_odeiv2_evolve_free (e);
-  gsl_odeiv2_control_free (c);
-  gsl_odeiv2_step_free (s);
+  gsl_odeiv2_driver_free(d);
   return results;
 }
