@@ -1,5 +1,5 @@
 import sys
-import numpy as np
+from numpy import zeros, arange, int, finfo
 
 class mesh:
     """
@@ -7,7 +7,7 @@ class mesh:
       1)  a continuous finite element (CFEM) mesh
       2)  a discontinuous finite element (DFEM) mesh
     """
-    def __init__(self, flag):
+    def __init__(self):
         """Default constructor"""
 
     def CFEMGrid1D(self, a, b, xnel, myorder):
@@ -25,27 +25,27 @@ class mesh:
             mesh object with necessary attributes
         """
         self.bounds = [a,b]
-        if len(xnel) == 1:  # uniform grid
-            self.nels = xnel[0]
+        if isinstance(xnel,int) == True:  # uniform grid
+            self.nels = xnel
             hel = (b-a)/self.nels  # spacing of elements (uniform)
-            xel = np.arange(a, b, hel)
+            xel = arange(a, b, hel)
         else:
             self.nels = len(xnel)
             xel = xnel
-            hel = np.zeros(self.nels-1)
-            for k in np.arange(0, self.nels-1):
+            hel = zeros(self.nels-1)
+            for k in arange(0, self.nels-1):
                 hel[k] = xnel[k+1]-xnel[k]  # spacing of elements (non-uniform)
 
         # set up the order of elements = 1 + degree of polynomial = number of degrees of freedom
         # e.g. for linears, use two degrees of freedom for each element
-        self.order = np.zeros((self.nels,), dtype=np.int) + myorder + 1
+        self.order = zeros((self.nels,), dtype=int) + myorder + 1
         self.maxord = max(self.order)
         # number  of nodes (including boundary values)
         self.nnodes = sum(self.order-1)+1
 
         # derive the global indexing of nodes:
         # nod(i,1) is the global number of j'th node in element i
-        self.nod = np.zeros((self.nels, self.maxord), dtype=np.int)-1  # global node numbering
+        self.nod = zeros((self.nels, self.maxord), dtype=int)-1  # global node numbering
         n = 0
         for k in range(0, self.nels):  # loop over number of elements
             for j in range(0, self.order[k]):      # loop over order
@@ -59,7 +59,7 @@ class mesh:
 
         # xnod , i=1..nnodes
         #  -> coordinates of node i
-        self.xnod = np.zeros((self.nnodes, 1))
+        self.xnod = zeros(self.nnodes)
         for k in range(0, self.nels-1):
             h = xel[k+1]-xel[k]   # h is the size of the element,
             hi = h/(self.order[k]-1)   # hi is the size of subdivision
@@ -76,7 +76,7 @@ class mesh:
         except TypeError:
             self.hmax = hel
 
-    def DFEMGrid1D(self, a, b, xnel, myorder, delta=np.finfo(float).resolution):
+    def DFEMGrid1D(self, a, b, xnel, myorder, delta=finfo(float).resolution):
         """
         sets up a discretized discontinuous finite element domain over the interval [a,b]
         using a default discontinuity spacing of the order of floating point precision
@@ -94,28 +94,28 @@ class mesh:
             mesh object with necessary attributes
         """
         self.bounds = [a, b]
-        if len(xnel) == 1:  # uniform grid
-            self.nels = xnel[0]
+        if isinstance(xnel, int) == True:  # uniform grid
+            self.nels = xnel
             hel = (b-a)/self.nels  # spacing of elements (uniform)
-            xel = np.arange(a, b, hel)
+            xel = arange(a, b, hel)
         else:
             self.nels = len(xnel)
             xel = xnel
-            hel = np.zeros(self.nels-1)
-            for k in np.arange(0, self.nels-1):
+            hel = zeros(self.nels-1)
+            for k in arange(0, self.nels-1):
                 hel[k] = xnel[k+1]-xnel[k]  # spacing of elements (non-uniform)
 
         # set up the order of elements = 1 + degree of polynomial = number of degrees of freedom
         # e.g. for linears, use two degrees of freedom for each element
-        self.order = np.zeros((self.nels,), dtype=np.int) + myorder + 1
+        self.order = zeros((self.nels,), dtype=int) + myorder + 1
         self.maxord = max(self.order)
         self.nnodes = sum(self.order)      # number  of nodes (including boundary values)
         nedges = self.nels+1  # number of edges (including boundary values)
 
         # derive the global indexing of nodes:
         # nod(i,1) is the global number of j'th node in element i
-        self.nod = np.zeros((self.nels, self.maxord), dtype=np.int)-1  # global node numbering
-        self.edge = np.zeros((self.nels, 2), dtype=np.int)-1  # global node numbering
+        self.nod = zeros((self.nels, self.maxord), dtype=int)-1  # global node numbering
+        self.edge = zeros((self.nels, 2), dtype=int)-1  # global node numbering
         n = 0
         e = 0
         for k in range(0, self.nels):  # for each element...
@@ -134,7 +134,7 @@ class mesh:
 
         # xedge, i=1..nels
         #  -> coordinates of edge i
-        self.xedge = np.zeros(nedges)
+        self.xedge = zeros(nedges)
         for k in range(0, self.nels-1):
             h = xel[k+1]-xel[k]   # h is the size of the element,
             for j in range(0, 2):  # only two edges regardless of polynomial order
@@ -146,7 +146,7 @@ class mesh:
 
         # xnod , i=1..nnodes
         #  -> coordinates of node i
-        self.xnod = np.zeros(self.nnodes)
+        self.xnod = zeros(self.nnodes)
         for k in range(0, self.nels-1):
             # (size of the element) - (delta values of each side of element),
             h = (xel[k+1]-xel[k])-(2*delta)
