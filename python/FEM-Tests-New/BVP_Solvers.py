@@ -70,11 +70,18 @@ class BVP_Solvers(mesh, func):
                     stiff[self.nod[el, idx], self.nod[el, idy]] += k[idx][idy]
                     mass[self.nod[el, idx], self.nod[el, idy]] += m[idx][idy]
 
-        # impose Dirichlet boundary conditions eliminate known values from the system
         self.soln = zeros(self.nnodes)
-        self.soln[0] = self.u(self.bounds[0])
-        self.soln[-1] = self.u(self.bounds[1])
         mat = add(stiff, mass)
+        # if Dirichlet boundary conditions eliminate known values from the system
+        # self.soln[0] = self.u(self.bounds[0])
+        # self.soln[-1] = self.u(self.bounds[1])
+        # rhsf = np.subtract(rhsf , np.dot(mat,sol)) # used for non-zero Dirichlet BCs
+        # SOLVE! (for coefficients of finite elements, still not the \emph{actual} solution)
+        # self.soln[1:-1] = linalg.solve(mat[1:-1, 1:-1], rhsf[1:-1])
+
+        # if Reflecting BCs
+        self.soln = linalg.solve(mat, rhsf)
+
 
         # rhsf = np.subtract(rhsf , np.dot(mat,sol)) # used for non-zero Dirichlet BCs
 

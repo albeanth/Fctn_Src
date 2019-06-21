@@ -13,22 +13,20 @@ class func:
         """
         base function definition
         """
-        # return x**2.0
-        return sin(x)
+        return cos(x)+1.0
 
     def up(self, x):
         """
         derivative of base function
         """
-        # return 2.0*x
-        return cos(x)
+        return -sin(x)
 
     def upp(self, x):
         """
         derivative of base function
         """
         # return 2.0
-        return -sin(x)
+        return -cos(x)
 
     def SigA(self, x):
         """
