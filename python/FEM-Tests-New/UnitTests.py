@@ -35,7 +35,8 @@ for i,ne in enumerate(NumOfElem):
     # for i in range(0, CFEM.nnodes):
     #     print("{0:.3f}\t{1:.4e}".format(CFEM.xnod[i], CFEM.soln[i]))
 
-CFEM.Plot()
+# CFEM.Plot()
+CFEM.Spatial_Convergence(L2Error, H1Error, h, False)
 sys.exit()
 
 # # pltCnt = FunT.ConvergencePlots(h,L2Error,H1Error,pltCnt)

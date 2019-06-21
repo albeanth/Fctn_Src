@@ -3,8 +3,8 @@ class func:
     """
     defines the function, derivative, and source required for 
     a method of manufactured solutions (MMS) problem set up to
-    a simple heat equation type problem
-    - (d/dx * K(x) du/dx) = f(x)
+    a simple one-group neutron diffusion equation type problem
+    - (d/dx * D(x) du/dx) + Sigma_a(x) u(x)= f(x)
     """
     def __init__(self):
         """standard constructor"""
@@ -30,21 +30,26 @@ class func:
         # return 2.0
         return -sin(x)
 
-    def k(self, x):
+    def SigA(self, x):
         """
-        thermal conductivity, k(x)
+        absorption cross section
         """
-        return x
+        return x+1.0
 
-    def kp(self, x):
+    def D(self, x):
         """
-        thermal conductivity, K(x)
+        diffusion coefficient, D(x)
         """
-        return 1.0
+        return 1.0/(3.0*self.SigA(x))
+
+    def Dx(self, x):
+        """
+        first spatial derivative of diffusion coefficient, D'(x)
+        """
+        return -1.0/(3*(x+1)**2.0)
     
     def f(self, x):
         """
         source using T and Tp that defines the MMS problem
         """
-        return -(self.kp(x)*self.up(x) + self.k(x)*self.upp(x))
-    
+        return -(self.Dx(x)*self.up(x) + self.D(x)*self.upp(x)) + self.SigA(x)*self.u(x)

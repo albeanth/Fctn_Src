@@ -1,7 +1,7 @@
 # import python packages
 import sys
-from numpy import zeros, outer, linalg, linspace
-from math import sqrt
+from numpy import zeros, outer, linalg, linspace, add
+from math import sqrt, log
 import matplotlib.pyplot as plt
 
 # import user defined functions and classes
@@ -35,6 +35,7 @@ class BVP_Solvers(mesh, func):
 
         ## set up matrix and rhs of linear system
         stiff = zeros((self.nnodes, self.nnodes))
+        mass = zeros((self.nnodes, self.nnodes))
         rhsf = zeros( self.nnodes )
         for el in range(0, self.nels):
             xL = self.xnod[self.nod[el, 0]]
@@ -42,6 +43,7 @@ class BVP_Solvers(mesh, func):
             dx = (xR - xL)/2.0
             # compute element stiffness matrix and rhs (load) vector
             k = zeros((self.order[el], self.order[el]))  # element stiffness matrix
+            m = zeros((self.order[el], self.order[el]))  # element mass matrix
             f = zeros(self.order[el])     # element load vector
 
             for l in range(0, nw):
@@ -49,13 +51,16 @@ class BVP_Solvers(mesh, func):
                 x = xL + (1.0 + xw[l])*dx
                 # calculations on ref element
                 psi, dpsi = shape(xw[l], self.order[el])
-                kval = self.k(x)
+                Dval = self.D(x)
+                SigAbs = self.SigA(x)
                 fval = self.f(x)
                 f += fval * psi * w[l]*dx
-                k += kval*outer(dpsi, dpsi)/dx/dx * w[l]*dx
+                k += Dval*outer(dpsi, dpsi)/dx/dx * w[l]*dx
+                m += SigAbs*outer(psi, psi) * w[l]*dx
 
             # # uncomment to see the local (stiffness+mass) matrix and local load vector
             # print(k)
+            # print(m)
             # print(f)
             # sys.exit()
 
@@ -63,6 +68,19 @@ class BVP_Solvers(mesh, func):
                 rhsf[self.nod[el, idx]] += f[idx]
                 for idy in range(0, self.order[el]):
                     stiff[self.nod[el, idx], self.nod[el, idy]] += k[idx][idy]
+                    mass[self.nod[el, idx], self.nod[el, idy]] += m[idx][idy]
+
+        # impose Dirichlet boundary conditions eliminate known values from the system
+        self.soln = zeros(self.nnodes)
+        self.soln[0] = self.u(self.bounds[0])
+        self.soln[-1] = self.u(self.bounds[1])
+        mat = add(stiff, mass)
+
+        # rhsf = np.subtract(rhsf , np.dot(mat,sol)) # used for non-zero Dirichlet BCs
+
+        # SOLVE! (for coefficients of finite elements, still not the \emph{actual} solution)
+        self.soln[1:-1] = linalg.solve(mat[1:-1, 1:-1], rhsf[1:-1])
+
 
         # impose Dirichlet boundary conditions eliminate known values from the system
         self.soln = zeros(self.nnodes)
@@ -136,6 +154,43 @@ class BVP_Solvers(mesh, func):
         plt.xlabel('Space')
         plt.grid(True)
         plt.show()
+
+    def Spatial_Convergence(self, L2Error, H1Error, h, flag=False):
+        """
+        computes the convergence of the L2/H1Error as a function of mesh refinement, h
+        INPUT:
+            L2Error = vector, computed as a function of h
+            H1Error = vector, computed as a function of h
+            h       = vector, mesh refinement
+        OUTPUT:
+            if flag == False
+                table of convergence as a function of mesh refinement
+            if flag == True
+                table + plot as a function of mesh refinement
+        """
+        if len(h) == 1:
+            print("Only one mesh discretization tested, mesh convergence plots not applicable.")
+        else:
+            # compute convergence and show table
+            print("dx\tL2Conv\tH1Conv")
+            print("{0:.2f}\t--\t--".format(h[0]))
+            for i in range(1,len(L2Error)-1):
+                conv_l2 = ( log(L2Error[i-1]) - log(L2Error[i]) ) / ( log(h[i-1]) - log(h[i]) )
+                conv_h1 = ( log(H1Error[i-1]) - log(H1Error[i]) ) / ( log(h[i-1]) - log(h[i]) )
+                print("{0:.2f}\t{1:.3f}\t{2:.3f}".format(h[i+1], conv_l2, conv_h1))
+            if flag == True:
+                plt.figure(2)
+                # plt.subplot(121)
+                plt.loglog(h, h**2, 'x-', linewidth=2, label='O(-2)')
+                plt.loglog(h, L2Error, 'x-', linewidth=2, label='L2Error')
+                plt.loglog(h, h, 'x-', linewidth=2, label='O(-1)')
+                plt.loglog(h, H1Error, 'x-', linewidth=2, label='H1Error')
+                plt.legend(loc='upper left')
+                plt.grid(True, which='both', axis='y', alpha=0.5)
+                # plt.subplot(122)
+                # plt.legend(loc='upper left')
+                # plt.grid(True, which='both', axis='y', alpha=0.5)
+                plt.show()
 
 
 
