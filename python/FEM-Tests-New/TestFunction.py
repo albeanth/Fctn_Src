@@ -32,7 +32,8 @@ class func:
         """
         absorption cross section
         """
-        return x+1.0
+        return x+1.0 # heterogeneous case
+        # return 1.0 # homogeneous case
 
     def D(self, x):
         """
@@ -44,7 +45,8 @@ class func:
         """
         first spatial derivative of diffusion coefficient, D'(x)
         """
-        return -1.0/(3*(x+1)**2.0)
+        return -1.0/(3*(x+1)**2.0)  # heterogeneous case
+        # return 0.0    # homogeneous case
     
     def f(self, x):
         """
