@@ -16,8 +16,8 @@ except ImportError:
 from BVP_Solvers import BVP_Solvers as BVP
 
 pltCnt = 1 # counter for plots
-# NumOfElem = [4,8,16,32,64,128,256]
-NumOfElem = [8]
+NumOfElem = [4,8,16,32,64,128,256]
+# NumOfElem = [8]
 h = zeros(len(NumOfElem))
 #====================#
 #    CFEM BVP TEST   #
@@ -32,14 +32,9 @@ for i,ne in enumerate(NumOfElem):
     L2Error[i] = CFEM.l2Err
     H1Error[i] = CFEM.h1Err
     h[i] = CFEM.hmax
-    # for i in range(0, CFEM.nnodes):
-    #     print("{0:.3f}\t{1:.4e}".format(CFEM.xnod[i], CFEM.soln[i]))
 
-# CFEM.Plot()
+CFEM.Plot(10, "CFEM")
 CFEM.Spatial_Convergence(L2Error, H1Error, h, False)
-sys.exit()
-
-# # pltCnt = FunT.ConvergencePlots(h,L2Error,H1Error,pltCnt)
 
 #====================#
 #    DFEM BVP TEST   #
@@ -50,5 +45,10 @@ DFEM = BVP()
 for i,ne in enumerate(NumOfElem):
     DFEM.DFEMGrid1D(0.0, pi, ne, 1)
     DFEM.DFEM_1D()
+    DFEM.Error()
+    DG_L2Error[i] = DFEM.l2Err
+    DG_H1Error[i] = DFEM.h1Err
+    h[i] = DFEM.hmax
 
-DFEM.Spatial_Convergence(DG_L2Error, DG_H1Error, h, True)
+DFEM.Plot(10, "DFEM")
+DFEM.Spatial_Convergence(DG_L2Error, DG_H1Error, h, False)
