@@ -1,6 +1,6 @@
 # import python packages
 import sys
-from numpy import zeros, outer, linalg, linspace, add
+from numpy import zeros, outer, linalg, linspace, add, subtract
 from math import sqrt, log
 import matplotlib.pyplot as plt
 
@@ -24,12 +24,7 @@ class BVP_Solvers(mesh, func):
     
     def CFEM_1D(self):
         """
-        Solves a continuous Galerkin formulation
-        INPUT:
-            grid - mesh object containing 1D CFEM grid
-            T    - TestFunction object containing MMS function info
-        OUTPUT:
-            sol - vector of FE coefficients for order of solution
+        Solves a two-point BVP using continuous Galerkin finite elements
         """
         nw, xw, w = QP(self.maxord)
 
@@ -82,23 +77,129 @@ class BVP_Solvers(mesh, func):
         # if Reflecting BCs
         self.soln = linalg.solve(mat, rhsf)
 
+    def DFEM_1D(self):
+        """
+        Solves a two-point BVP using discontinuous Galerkin finite elements
+        """
+        nw, xw, w = QP(self.maxord)
 
-        # rhsf = np.subtract(rhsf , np.dot(mat,sol)) # used for non-zero Dirichlet BCs
+        ## set up matrix and rhs of linear system
+        stiff = zeros((self.nnodes, self.nnodes))
+        mass = zeros((self.nnodes, self.nnodes))
+        curr = zeros((self.nnodes, self.nnodes))
+        rhsf = zeros(self.nnodes)
+        for el in range(0, self.nels):
+            xL = self.xnod[self.nod[el, 0]]
+            xR = self.xnod[self.nod[el, self.order[el]-1]]
+            dx = (xR - xL)/2.0
+            # compute element stiffness matrix and rhs (load) vector
+            k = zeros((self.order[el], self.order[el]))  # element stiffness matrix
+            m = zeros((self.order[el], self.order[el]))  # element stiffness matrix
+            f = zeros(self.order[el])     # element load vector
+            for l in range(0, nw):
+                # x runs in true element, xw runs in reference element
+                x = xL + (1.0 + xw[l])*dx
+                # calculations on ref element
+                psi, dpsi = shape(xw[l], self.order[el])
+                Dval = self.D(x)
+                SigAbs = self.SigA(x)
+                fval = self.f(x)
+                f += fval * psi * w[l]*dx
+                k += Dval*outer(dpsi, dpsi)/dx/dx * w[l]*dx
+                m += SigAbs*outer(psi, psi) * w[l]*dx
 
-        # SOLVE! (for coefficients of finite elements, still not the \emph{actual} solution)
-        self.soln[1:-1] = linalg.solve(mat[1:-1, 1:-1], rhsf[1:-1])
+            # uncomment to see the local (stiffness+mass) matrix and local load vector
+            # print(k)
+            # print(m)
+            # print(f)
+            # sys.exit()
+
+            # neutron current, J, treatments
+            # current set up, only valid for linear FEs 
+            #  - can make higher order FEs by generalizing 
+            if el == 0:
+                self.Curr_iplus(curr, el)
+            elif (el == self.nels-1):
+                self.Curr_iminus(curr, el)
+            else:
+                self.Curr_iminus(curr, el)
+                self.Curr_iplus(curr, el)
 
 
-        # impose Dirichlet boundary conditions eliminate known values from the system
+            # add the computed element stiffness matrix and load vector to the global matrix and vector
+            for idx in range(0,self.order[el]):
+                rhsf[self.nod[el, idx]] += f[idx]
+                for idy in range(0, self.order[el]):
+                    stiff[self.nod[el, idx], self.nod[el, idy]] += k[idx][idy]
+                    mass[self.nod[el, idx], self.nod[el, idy]] += m[idx][idy]
+
+        # uncomment to see the global stiffness matrix and load vector
+        # print("Global Stiffness Matrix")
+        # for idx in range(0, self.nnodes):
+        #     for idy in range(0, self.nnodes):
+        #         print("{0: .3f} ".format(stiff[idx,idy]),end='')
+        #     print("")
+        # print("Global Mass Matrix")
+        # for idx in range(0, self.nnodes):
+        #     for idy in range(0, self.nnodes):
+        #         print("{0: .3f} ".format(mass[idx,idy]),end='')
+        #     print("")
+        # print("Global Current Matrix")
+        # for idx in range(0, self.nnodes):
+        #     for idy in range(0, self.nnodes):
+        #         print("{0: .3f} ".format(curr[idx,idy]),end='')
+        #     print("")
+        # print("RHSF")
+        # for idx in range(0, self.nnodes):
+        #     print("{0: .3f}".format(rhsf[idx]))
+        # sys.exit()
+
         self.soln = zeros(self.nnodes)
-        self.soln[0] = self.u(self.bounds[0])
-        self.soln[-1] = self.u(self.bounds[1])
-        mat = stiff
+        mat = add(curr,add(stiff,mass))
+        # print("Global Combined Matrix")
+        # for idx in range(0, self.nnodes):
+        #     for idy in range(0, self.nnodes):
+        #         print("{0: .3f} ".format(mat[idx, idy]), end='')
+        #     print("")
+        # sys.exit()
 
-        # rhsf = np.subtract(rhsf , np.dot(mat,sol)) # used for non-zero Dirichlet BCs
+        self.soln = linalg.solve(mat, rhsf)
 
-        # SOLVE! (for coefficients of finite elements, still not the \emph{actual} solution)
-        self.soln[1:-1] = linalg.solve(mat[1:-1, 1:-1], rhsf[1:-1])
+    def Curr_iplus(self, curr, el):
+        """
+        current treatment for J_{i+1/2}
+        """
+        # el + 1
+        xL = self.xnod[self.nod[el+1, 0]]
+        xR = self.xnod[self.nod[el+1, 1]]
+        dx = xR-xL
+        curr[self.nod[el, 1], self.nod[el+1, 0]] = -( 1.0/4.0 - self.D(xL)/(2.0*dx) )# \phi_{i+1,L}
+        curr[self.nod[el, 1], self.nod[el+1, 1]] = -( self.D(xL)/(2.0*dx)           )# \phi_{i+1,R}
+        # el
+        xL = self.xnod[self.nod[el, 0]]
+        xR = self.xnod[self.nod[el, 1]]
+        dx = xR-xL
+        curr[self.nod[el, 1], self.nod[el, 0]] =  self.D(xR)/(2.0*dx)           # \phi_{i,L}
+        curr[self.nod[el, 1], self.nod[el, 1]] =  1.0/4.0 - self.D(xR)/(2.0*dx) # \phi_{i,R}
+        return curr
+
+    def Curr_iminus(self, curr, el):
+        """
+        current treatment for J_{i-1/2}
+        """
+        # el - 1
+        xL = self.xnod[self.nod[el-1, 0]]
+        xR = self.xnod[self.nod[el-1, 1]]
+        dx = xR-xL
+        curr[self.nod[el, 0], self.nod[el-1, 0]] = -( self.D(xR)/(2.0*dx)           )# \phi_{i-1,L}
+        curr[self.nod[el, 0], self.nod[el-1, 1]] = -( 1.0/4.0 - self.D(xR)/(2.0*dx) )# \phi_{i-1,R}
+        # el
+        xL = self.xnod[self.nod[el, 0]]
+        xR = self.xnod[self.nod[el, 1]]
+        dx = xR-xL
+        curr[self.nod[el, 0], self.nod[el, 0]] = 1.0/4.0 - self.D(xL)/(2.0*dx) # \phi_{i,L}
+        curr[self.nod[el, 0], self.nod[el, 1]] = self.D(xL)/(2.0*dx)           # \phi_{i,R}
+        return curr
 
     def Error(self):
         """

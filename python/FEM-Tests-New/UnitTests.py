@@ -46,18 +46,9 @@ sys.exit()
 #====================#
 DG_L2Error = ones(len(NumOfElem))
 DG_H1Error = ones(len(NumOfElem))
-# for i,ne in enumerate(NumOfElem):
-    # grid.DFEMGrid1D(0.0, pi, ne, 1)
+DFEM = BVP()
+for i,ne in enumerate(NumOfElem):
+    DFEM.DFEMGrid1D(0.0, pi, ne, 1)
+    DFEM.DFEM_1D()
 
-
-
-#     testGrid = SetUpGrid.DFEMGrid1D([0.0,pi],[ne],1,delta)
-#     FESoln = BVP.DFEM_BVP_1D(testGrid,T,source,cond)
-#     # BVP.plot(testGrid,FESoln)
-#     # sys.exit()
-#     l2Err, h1Err = BVP.Error(testGrid,FESoln,T,Tp)
-#     DG_L2Error[i] = l2Err
-#     DG_H1Error[i] = h1Err
-#     h[i] = testGrid.hmax
-
-# pltCnt = FunT.ConvergencePlots(h,DG_L2Error,DG_H1Error,pltCnt)
+DFEM.Spatial_Convergence(DG_L2Error, DG_H1Error, h, True)
