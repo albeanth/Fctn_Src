@@ -232,7 +232,7 @@ class BVP_Solvers(mesh, func):
         self.l2Err = sqrt(self.l2Err)
         self.h1Err = sqrt(self.l2Err + self.h1Err)
 
-    def Plot(self, NumPts=10):
+    def Plot(self, NumPts=10, string="CFEM"):
         """
         plots CFEM solution to BVP (red) with analytic MMS solution (blue)
         """
@@ -240,7 +240,6 @@ class BVP_Solvers(mesh, func):
         xplot = linspace(self.bounds[0], self.bounds[1], self.nels*NumPts+1)
         plt.plot(xplot, self.u(xplot), linewidth = 2, color = 'blue')
 
-        nw, xw, w = QP(self.maxord)
         for el in range(0, self.nels):
             xL = self.xnod[self.nod[el, 0]]
             xR = self.xnod[self.nod[el, self.order[el]-1]]
@@ -258,7 +257,7 @@ class BVP_Solvers(mesh, func):
 
             plt.plot(xpp,ypp, linewidth=2, color = 'red')
         
-        plt.title('Exact solution (blue) and BVP FEM solution (red)')
+        plt.title("Exact solution (blue) and BVP {0} solution (red)".format(string))
         plt.xlabel('Space')
         plt.grid(True)
         plt.show()
