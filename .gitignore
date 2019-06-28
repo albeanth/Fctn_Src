@@ -1,12 +1,14 @@
 # General
 .DS_Store
 working_dir/
+.vscode/
 
 # python and swig
 __pycache__
 build/
 *_wrap.cpp
 *.so
+*.pyc
 
 # latex,
 *.aux
