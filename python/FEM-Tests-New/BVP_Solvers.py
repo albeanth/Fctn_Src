@@ -201,12 +201,11 @@ class BVP_Solvers(mesh, func):
         curr[self.nod[el, 0], self.nod[el, 1]] = self.D(xL)/(2.0*dx)           # \phi_{i,R}
         return curr
 
-    def Error(self):
+    def L2Error(self):
         """
-        computes the error from an MMS type BVP problem
+        computes the L2 error from an MMS type BVP problem
         """
         nw, xw, w = QP(self.maxord)
-
         self.l2Err = 0.0
         self.h1Err = 0.0
         for el in range(0, self.nels):
@@ -232,6 +231,35 @@ class BVP_Solvers(mesh, func):
         self.l2Err = sqrt(self.l2Err)
         self.h1Err = sqrt(self.l2Err + self.h1Err)
 
+    def LinfError(self):
+        """
+        computes the L_infty error from an MMS type BVP problem
+        """
+        nw, xw, w = QP(self.maxord)
+        self.linf_ErrVal = 0.0
+        self.linf_Loc = None
+        ## set mesh parameters to spatial grid
+        for el in range(0, self.nels):  # for each element in all elements
+            xL = self.xnod[self.nod[el, 0]]
+            xR = self.xnod[self.nod[el, self.order[el]-1]]
+            dx = (xR - xL)/2.0
+            for l in range(0, nw):
+                x = xL + (1.0 + xw[l])*dx
+                psi, dpsi = shape(xw[l], self.order[el])
+                uval = self.u(x)
+                uhval = 0.0
+                for k in range(0, self.order[el]):
+                    mynum = self.nod[el, k]
+                    uhval += self.soln[mynum]*psi[k]
+                if abs(uval-uhval) > self.linf_ErrVal:
+                    self.linf_ErrVal = abs(uval-uhval)
+                    self.linf_Loc = x
+        
+        if self.linf_Loc == None:
+            print("Max error not found! That doesn't make sense...")
+            sys.exit()
+
+    
     def Plot(self, NumPts=10, string="CFEM"):
         """
         plots CFEM solution to BVP (red) with analytic MMS solution (blue)
@@ -279,12 +307,12 @@ class BVP_Solvers(mesh, func):
             print("Only one mesh discretization tested, mesh convergence plots not applicable.")
         else:
             # compute convergence and show table
-            print("dx\tL2Conv\tH1Conv")
-            print("{0:.2f}\t--\t--".format(h[0]))
+            print("dx\t   L2Conv   H1Conv")
+            print("{0:.3e}  --\t    --".format(h[0]))
             for i in range(1,len(L2Error)-1):
                 conv_l2 = ( log(L2Error[i-1]) - log(L2Error[i]) ) / ( log(h[i-1]) - log(h[i]) )
                 conv_h1 = ( log(H1Error[i-1]) - log(H1Error[i]) ) / ( log(h[i-1]) - log(h[i]) )
-                print("{0:.2f}\t{1:.3f}\t{2:.3f}".format(h[i+1], conv_l2, conv_h1))
+                print("{0:.3e}  {1:.3f}    {2:.3f}".format(h[i+1], conv_l2, conv_h1))
             if flag == True:
                 plt.figure(2)
                 # plt.subplot(121)
