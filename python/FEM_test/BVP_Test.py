@@ -84,6 +84,65 @@ def CFEM_BVP_1D(space,T,source,cond):
 
     return(sol)
 
+def CFEM_Func_1D(space,fun):
+    '''
+    This function solves a two-point BVP using continuous Galerkin finite elements.
+      - either first or second order FE
+      - Numerical integration is used in computation of stiffness matrix and rhs
+
+    INPUT:
+        nw, xw, w: number of integration points, nodes, and weights
+        nels: number of elements
+        ord: lost of polynomial order for corresponsing elements
+        xnod, nod, nnodes: list of node coordinates, global numbering of nodes, and total number of nodes
+    OUTPUT:
+        sol: is the numerical solution of the corresponding FEM coefficients
+
+    A. Alberti 05/2018
+    Referenced from M. Peszynska MTH659 FEM Course
+    '''
+    nw,xw,w = QuadParams.QP(space.maxord)
+    ## set mesh parameters to spatial grid
+    nels = space.nels
+    order = space.order
+    nod = space.nod
+    xnod = space.xnod
+    nnodes = space.nnodes
+
+    ## set up matrix and rhs of linear system
+    mass = np.zeros((nnodes,nnodes)); rhsf = np.zeros(nnodes)#rhsf = np.zeros((nnodes,1));
+    for el in range(0,nels): # for each element in all elements
+        xL = xnod[nod[el,0]] # left endpoint on element
+        xR = xnod[nod[el,order[el]-1]]  # right endpoint on element
+        dx = (xR-xL)/2.  # Jacobian of transformation
+        # compute element mass matrix and load vector
+        m = np.zeros((order[el],order[el]))
+        f = np.zeros(order[el])     # element load vector
+
+        for l in range(0,nw):
+            x = xL + (1 + xw[l])*dx                # x runs in true element, xw runs in reference element
+            psi,dpsi = shape.shape(xw[l],order[el])      # calculations on ref.element
+            f += fun(x) * psi *w[l]*dx
+            m += np.outer(psi,psi) * w[l]*dx
+
+        # add the computed element stiffness matrix and load vector to the global matrix and vector
+        for idx in range(0,order[el]):
+            rhsf[nod[el,idx]] += f[idx]
+            for idy in range(0,order[el]):
+                mass[nod[el,idx],nod[el,idy]] += m[idx][idy]
+
+    # impose Dirichlet boundary conditions eliminate known values from the system
+    sol = np.zeros(nnodes)
+    sol[0] = fun(space.bounds[0])  # BC
+    sol[-1] = fun(space.bounds[1])    # BC
+    mat = mass
+    # rhsf = np.subtract(rhsf , np.dot(mat,sol))
+
+    # SOLVE! (for coefficients of finite elements, still not the \emph{actual} solution)
+    sol[1:-1] = np.linalg.solve(mat[1:-1,1:-1],rhsf[1:-1])
+
+    return(sol)
+
 def DFEM_BVP_1D(space,T,source,cond):
     '''
     This function solves a two-point BVP using discontinuous Galerkin finite elements.
@@ -207,6 +266,31 @@ def Error(space,sol,T,Tp):
     h1Err = math.sqrt(l2Err+h1Err)
 
     return(l2Err,h1Err)
+
+def Linfty(space,sol,T):
+    nw,xw,w = QuadParams.QP(space.maxord)
+    ## set mesh parameters to spatial grid
+    nels = space.nels
+    order = space.order
+    nod = space.nod
+    xnod = space.xnod
+    MaxErr = 0.0
+    for el in range(0,nels): # for each element in all elements
+        tL = xnod[nod[el,0]] # left endpoint on element
+        tR = xnod[nod[el,order[el]-1]]  # right endpoint on element
+        dt = (tR-tL)/2.  # Jacobian of transformation
+        for l in range(0,nw):
+            t = tL + (1 + xw[l])*dt                # x runs in true element, xw runs in reference element
+            psi,dpsi = shape.shape(xw[l],order[el])      # calculations on ref.element
+            uval = T(t)
+            uhval = 0.0
+            for k in range(0,order[el]):
+                mynum = nod[el,k] # (nod=global numbering of nodes). mynum = node,k, of element,el
+                uhval = uhval + sol[mynum]*psi[k]
+            if abs(uval-uhval) > MaxErr:
+                MaxErr = abs(uval-uhval)
+
+    return(MaxErr)
 
 def plot(space,sol):
 
