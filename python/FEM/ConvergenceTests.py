@@ -33,7 +33,7 @@ for i,ne in enumerate(NumOfElem):
     if Problem == 1:
         CFEM.CFEMGrid1D(0, pi, ne, 1) # set up CFEM grid
     elif Problem == 2:
-    CFEM.CFEMGrid1D(0.0, 3.0*pi/2.0, ne, 1)  # set up CFEM grid
+        CFEM.CFEMGrid1D(0.0, 3.0*pi/2.0, ne, 1)  # set up CFEM grid
     elif Problem == 3:
         CFEM.CFEMGrid1D(0, 6.0, ne, 1) # set up CFEM grid
 
@@ -52,27 +52,30 @@ CFEM.Spatial_Convergence(L2Error, H1Error, h, False)
 #====================#
 #    DFEM BVP TEST   #
 #====================#
-# DG_L2Error = ones(len(NumOfElem))
-# DG_H1Error = ones(len(NumOfElem))
-# DG_InfError = ones(len(NumOfElem))
-# DG_InfErr_Loc = ones(len(NumOfElem))
-# DFEM = BVP()
-# for i,ne in enumerate(NumOfElem):
-# #     # DFEM.DFEMGrid1D(0.0, pi, ne, 1)
-#     DFEM.DFEMGrid1D(0.0, 3.0*pi/2.0, ne, 1)
-#     # DFEM.DFEMGrid1D(0, 6.0, ne, 1)  # set up CFEM grid
-#     DFEM.General_1D()
-#     DFEM.L2Error()
-#     DFEM.LinfError()
-#     DG_L2Error[i] = DFEM.l2Err
-#     DG_H1Error[i] = DFEM.h1Err
-#     DG_InfError[i] = DFEM.linf_ErrVal
-#     DG_InfErr_Loc[i] = DFEM.linf_Loc
-#     h[i] = DFEM.hmax
+DG_L2Error = ones(len(NumOfElem))
+DG_H1Error = ones(len(NumOfElem))
+DG_InfError = ones(len(NumOfElem))
+DG_InfErr_Loc = ones(len(NumOfElem))
+DFEM = BVP(Problem, Hetero)
+for i,ne in enumerate(NumOfElem):
+    if Problem == 1:
+        DFEM.DFEMGrid1D(0.0, pi, ne, 1)
+    elif Problem == 2:
+        DFEM.DFEMGrid1D(0.0, 3.0*pi/2.0, ne, 1)
+    elif Problem == 3:
+        DFEM.DFEMGrid1D(0, 6.0, ne, 1) 
+    DFEM.General_1D()
+    DFEM.L2Error()
+    DFEM.LinfError()
+    DG_L2Error[i] = DFEM.l2Err
+    DG_H1Error[i] = DFEM.h1Err
+    DG_InfError[i] = DFEM.linf_ErrVal
+    DG_InfErr_Loc[i] = DFEM.linf_Loc
+    h[i] = DFEM.hmax
 
 # # print(DG_InfErr_Loc)
 # # DFEM.Plot(2, "DFEM")
-# DFEM.Spatial_Convergence(DG_L2Error, DG_H1Error, h, False)
+DFEM.Spatial_Convergence(DG_L2Error, DG_H1Error, h, False)
 # # plt.figure(2)
 # # x = linspace(0, pi, 100)#3.0*pi/2.0)
 # # plt.plot(x, CFEM.u(x), '-', linewidth=1, color='black')
