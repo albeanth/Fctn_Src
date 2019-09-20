@@ -5,10 +5,10 @@ from math import sqrt, log
 import matplotlib.pyplot as plt
 
 # import user defined functions and classes
-from QuadParams import QP
-from ShapeFuncs import shape
-from FEM_1D_Mesh import mesh
-from TestFunction import func
+from src.QuadParams import QP
+from src.ShapeFuncs import shape
+from src.FEM_1D_Mesh import mesh
+from src.TestFunction import func
 
 class BVP_Solvers(mesh, func):
     """
@@ -19,8 +19,8 @@ class BVP_Solvers(mesh, func):
     Referenced from M. Peszynska MTH659 FEM Course
     """
 
-    def __init__(self):
-        """ default constructor """
+    def __init__(self, choice, material):
+        func.__init__(self, choice, material)
     
     def General_1D(self):
         """
@@ -88,17 +88,20 @@ class BVP_Solvers(mesh, func):
         # sys.exit()
         self.soln = zeros(self.nnodes)
         mat = add(curr,add(stiff, mass))
-        # if Dirichlet boundary conditions eliminate known values from the system
-        # self.soln[0] = 10.0 #self.u(self.bounds[0])
-        # self.soln[-1] = 0.0 #self.u(self.bounds[1])
-        # rhsf = subtract(rhsf, dot(mat, self.soln)) # used for non-zero Dirichlet BCs
         # SOLVE! (for coefficients of finite elements, still not the \emph{actual} solution)
-        # self.soln[1:] = linalg.solve(mat[1:, 1:], rhsf[1:])
-        # self.soln[:-1] = linalg.solve(mat[:-1, :-1], rhsf[:-1])
-        # self.soln[1:-1] = linalg.solve(mat[1:-1, 1:-1], rhsf[1:-1])
-
-        # if Reflecting BCs
-        self.soln = linalg.solve(mat, rhsf)
+        if self.selection == 2:
+            # if Dirichlet boundary conditions eliminate known values from the system
+            self.soln[0] = self.u(self.bounds[0])
+            subtract(rhsf, dot(mat, self.soln), out=rhsf) # used for non-zero Dirichlet BCs
+            self.soln[1:] = linalg.solve(mat[1:, 1:], rhsf[1:])
+        elif self.selection == 3:
+            self.soln[0] = self.u(self.bounds[0])
+            self.soln[-1] = self.u(self.bounds[1])
+            subtract(rhsf, dot(mat, self.soln), out=rhsf) # used for non-zero Dirichlet BCs
+            # self.soln[1:-1] = linalg.solve(mat[1:-1, 1:-1], rhsf[1:-1])
+        else:
+            # if Reflecting BCs
+            self.soln = linalg.solve(mat, rhsf)
 
 
     def CFEM_1D(self):
@@ -149,7 +152,7 @@ class BVP_Solvers(mesh, func):
         # if Dirichlet boundary conditions eliminate known values from the system
         self.soln[0] = self.u(self.bounds[0])
         # self.soln[-1] = self.u(self.bounds[1])
-        rhsf = subtract(rhsf, dot(mat, self.soln)) # used for non-zero Dirichlet BCs
+        subtract(rhsf, dot(mat, self.soln), out=rhsf) # used for non-zero Dirichlet BCs
         # SOLVE! (for coefficients of finite elements, still not the \emph{actual} solution)
         self.soln[1:] = linalg.solve(mat[1:, 1:], rhsf[1:])
 
@@ -262,7 +265,7 @@ class BVP_Solvers(mesh, func):
 
         # self.soln[0] = self.u(self.bounds[0])
         # self.soln[-1] = self.u(self.bounds[1])
-        # rhsf = subtract(rhsf, dot(mat, self.soln)) # used for non-zero Dirichlet BCs
+        # subtract(rhsf, dot(mat, self.soln), out=rhsf) # used for non-zero Dirichlet BCs
         # SOLVE! (for coefficients of finite elements, still not the \emph{actual} solution)
         # self.soln[1:] = linalg.solve(mat[1:, 1:], rhsf[1:])
 

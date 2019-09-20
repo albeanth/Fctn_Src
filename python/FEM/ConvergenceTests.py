@@ -1,5 +1,6 @@
 # import python packages
 import sys
+import os
 from numpy import ones, zeros, linspace
 from math import pi
 import matplotlib.pyplot as plt
@@ -14,12 +15,12 @@ except ImportError:
     StyDim = ''
 
 # import user defined class
-from BVP_Solvers import BVP_Solvers as BVP
-
-pltCnt = 1 # counter for plots
-# NumOfElem = [4,8,16,32,64,128,256,512,1024]
-NumOfElem = [16,64,128,256]
+from src.BVP_Solvers import BVP_Solvers as BVP
+NumOfElem = [4,8,16,32,64,128,256,512,1024]
+# NumOfElem = [16]
 h = zeros(len(NumOfElem))
+Problem = 2
+Hetero = 2
 #====================#
 #    CFEM BVP TEST   #
 #=====================
@@ -27,12 +28,15 @@ L2Error = ones(len(NumOfElem))
 H1Error = ones(len(NumOfElem))
 InfError = ones(len(NumOfElem))
 InfErr_Loc = ones(len(NumOfElem))
-CFEM = BVP()  # create instance of BVP Solver for CFEM work
+CFEM = BVP(Problem, Hetero)  # create instance of BVP Solver for CFEM work
 for i,ne in enumerate(NumOfElem):
-    # CFEM.CFEMGrid1D(0, pi, ne, 1) # set up CFEM grid
-    # CFEM.CFEMGrid1D(-5.0, 5.0, ne, 1) # set up CFEM grid
+    if Problem == 1:
+        CFEM.CFEMGrid1D(0, pi, ne, 1) # set up CFEM grid
+    elif Problem == 2:
     CFEM.CFEMGrid1D(0.0, 3.0*pi/2.0, ne, 1)  # set up CFEM grid
-    # CFEM.CFEMGrid1D(0, 6.0, ne, 1) # set up CFEM grid
+    elif Problem == 3:
+        CFEM.CFEMGrid1D(0, 6.0, ne, 1) # set up CFEM grid
+
     CFEM.General_1D()                  # call BVP CFEM solver
     CFEM.L2Error()                    # compute L2 and H1 error
     CFEM.LinfError()
