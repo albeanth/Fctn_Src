@@ -110,39 +110,20 @@ class mesh:
         self.order = zeros((self.nels,), dtype=int) + myorder + 1
         self.maxord = max(self.order)
         self.nnodes = sum(self.order)      # number  of nodes (including boundary values)
-        nedges = self.nels+1  # number of edges (including boundary values)
 
         # derive the global indexing of nodes:
         # nod(i,1) is the global number of j'th node in element i
         self.nod = zeros((self.nels, self.maxord), dtype=int)-1  # global node numbering
-        self.edge = zeros((self.nels, 2), dtype=int)-1  # global node numbering
         n = 0
-        e = 0
         for k in range(0, self.nels):  # for each element...
             for j in range(0, self.order[k]):   # ...get the order of that element
                 self.nod[k, j] = n
                 n += 1
                 # print(j,k)
-            self.edge[k, 0] = e
-            self.edge[k, 1] = e+1
-            e += 1
 
         # # uncomment to see the way the nodes and cell edges are numbered
         # print(Magenta+'nod\n'+str(self.nod))
-        # print(Magenta+'edge\n'+str(self.edge))
         # sys.exit()
-
-        # xedge, i=1..nels
-        #  -> coordinates of edge i
-        self.xedge = zeros(nedges)
-        for k in range(0, self.nels-1):
-            h = xel[k+1]-xel[k]   # h is the size of the element,
-            for j in range(0, 2):  # only two edges regardless of polynomial order
-                self.xedge[self.edge[k, j]] = xel[k] + h*j
-        k = self.nels-1
-        h = b-xel[k]
-        for j in range(0, 2):
-            self.xedge[self.edge[k, j]] = xel[k] + h*j
 
         # xnod , i=1..nnodes
         #  -> coordinates of node i

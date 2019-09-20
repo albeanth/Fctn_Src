@@ -1,7 +1,8 @@
 # import python packages
 import sys
-from numpy import ones, zeros
+from numpy import ones, zeros, linspace
 from math import pi
+import matplotlib.pyplot as plt
 try:
     from colorama import Fore, Style, init
     init(autoreset=True)
@@ -16,39 +17,75 @@ except ImportError:
 from BVP_Solvers import BVP_Solvers as BVP
 
 pltCnt = 1 # counter for plots
-NumOfElem = [4,8,16,32,64,128,256]
-# NumOfElem = [8]
+# NumOfElem = [4,8,16,32,64,128,256,512,1024]
+NumOfElem = [16,64,128,256]
 h = zeros(len(NumOfElem))
 #====================#
 #    CFEM BVP TEST   #
 #=====================
 L2Error = ones(len(NumOfElem))
 H1Error = ones(len(NumOfElem))
+InfError = ones(len(NumOfElem))
+InfErr_Loc = ones(len(NumOfElem))
 CFEM = BVP()  # create instance of BVP Solver for CFEM work
 for i,ne in enumerate(NumOfElem):
-    CFEM.CFEMGrid1D(0.0, pi, ne, 1) # set up CFEM grid
-    CFEM.CFEM_1D()                  # call BVP CFEM solver
-    CFEM.Error()                    # compute L2 and H1 error
+    # CFEM.CFEMGrid1D(0, pi, ne, 1) # set up CFEM grid
+    # CFEM.CFEMGrid1D(-5.0, 5.0, ne, 1) # set up CFEM grid
+    CFEM.CFEMGrid1D(0.0, 3.0*pi/2.0, ne, 1)  # set up CFEM grid
+    # CFEM.CFEMGrid1D(0, 6.0, ne, 1) # set up CFEM grid
+    CFEM.General_1D()                  # call BVP CFEM solver
+    CFEM.L2Error()                    # compute L2 and H1 error
+    CFEM.LinfError()
     L2Error[i] = CFEM.l2Err
     H1Error[i] = CFEM.h1Err
+    InfError[i] = CFEM.linf_ErrVal
+    InfErr_Loc[i] = CFEM.linf_Loc
     h[i] = CFEM.hmax
 
-CFEM.Plot(10, "CFEM")
+    # CFEM.Plot(2, "CFEM")
 CFEM.Spatial_Convergence(L2Error, H1Error, h, False)
 
 #====================#
 #    DFEM BVP TEST   #
 #====================#
-DG_L2Error = ones(len(NumOfElem))
-DG_H1Error = ones(len(NumOfElem))
-DFEM = BVP()
-for i,ne in enumerate(NumOfElem):
-    DFEM.DFEMGrid1D(0.0, pi, ne, 1)
-    DFEM.DFEM_1D()
-    DFEM.Error()
-    DG_L2Error[i] = DFEM.l2Err
-    DG_H1Error[i] = DFEM.h1Err
-    h[i] = DFEM.hmax
+# DG_L2Error = ones(len(NumOfElem))
+# DG_H1Error = ones(len(NumOfElem))
+# DG_InfError = ones(len(NumOfElem))
+# DG_InfErr_Loc = ones(len(NumOfElem))
+# DFEM = BVP()
+# for i,ne in enumerate(NumOfElem):
+# #     # DFEM.DFEMGrid1D(0.0, pi, ne, 1)
+#     DFEM.DFEMGrid1D(0.0, 3.0*pi/2.0, ne, 1)
+#     # DFEM.DFEMGrid1D(0, 6.0, ne, 1)  # set up CFEM grid
+#     DFEM.General_1D()
+#     DFEM.L2Error()
+#     DFEM.LinfError()
+#     DG_L2Error[i] = DFEM.l2Err
+#     DG_H1Error[i] = DFEM.h1Err
+#     DG_InfError[i] = DFEM.linf_ErrVal
+#     DG_InfErr_Loc[i] = DFEM.linf_Loc
+#     h[i] = DFEM.hmax
 
-DFEM.Plot(10, "DFEM")
-DFEM.Spatial_Convergence(DG_L2Error, DG_H1Error, h, False)
+# # print(DG_InfErr_Loc)
+# # DFEM.Plot(2, "DFEM")
+# DFEM.Spatial_Convergence(DG_L2Error, DG_H1Error, h, False)
+# # plt.figure(2)
+# # x = linspace(0, pi, 100)#3.0*pi/2.0)
+# # plt.plot(x, CFEM.u(x), '-', linewidth=1, color='black')
+# # plt.plot(CFEM.xnod, CFEM.soln, '-', linewidth=1, color='blue')
+# # for idx in range(0, DFEM.nnodes, 2):
+# #     plt.plot(DFEM.xnod[idx:idx+2], DFEM.soln[idx:idx+2], '-', linewidth=1, color='red')
+# # plt.xlabel('Space')
+# # plt.grid(True)
+# # plt.show()
+
+# plt.figure(3)
+# plt.loglog(h, InfError, 'x-', linewidth=2, color='red',label='CFEM')
+# plt.loglog(h, h**2/100, ':', linewidth=2, color='red', alpha=0.5)
+# plt.loglog(h, DG_InfError, 'x-', linewidth=2, color='blue',label='DFEM')
+# plt.loglog(h, h/10, ':', linewidth=2, color='blue', alpha=0.5)
+# plt.xlabel('dx')
+# plt.grid(True)
+# plt.legend()
+# plt.show()
+

@@ -1,6 +1,6 @@
 # import python packages
 import sys
-from numpy import zeros, outer, linalg, linspace, add, subtract
+from numpy import zeros, outer, linalg, linspace, add, subtract, dot, array
 from math import sqrt, log
 import matplotlib.pyplot as plt
 
@@ -22,6 +22,85 @@ class BVP_Solvers(mesh, func):
     def __init__(self):
         """ default constructor """
     
+    def General_1D(self):
+        """
+        Solves a two-point BVP using Galerkin finite elements
+        - automatically switches between continuous or discontinuous 
+          based on mesh it has access to
+        """
+        nw, xw, w = QP(self.maxord)
+
+        ## set up matrix and rhs of linear system
+        stiff = zeros((self.nnodes, self.nnodes))
+        mass = zeros((self.nnodes, self.nnodes))
+        curr = zeros((self.nnodes, self.nnodes)) # "current" matrix used in DFEM (default to zeros for CFEM)
+        rhsf = zeros( self.nnodes )
+        for el in range(0, self.nels):
+            xL = self.xnod[self.nod[el, 0]]
+            xR = self.xnod[self.nod[el, self.order[el]-1]]
+            dx = (xR - xL)/2.0
+            # compute element stiffness matrix and rhs (load) vector
+            k = zeros((self.order[el], self.order[el]))  # element stiffness matrix
+            m = zeros((self.order[el], self.order[el]))  # element mass matrix
+            f = zeros(self.order[el])     # element load vector
+
+            for l in range(0, nw):
+                # x runs in true element, xw runs in reference element
+                x = xL + (1.0 + xw[l])*dx
+                # calculations on ref element
+                psi, dpsi = shape(xw[l], self.order[el])
+                Dval = self.D(x)
+                SigAbs = self.SigA(x)
+                fval = self.f(x)
+                f += fval * psi * w[l]*dx
+                k += Dval*outer(dpsi, dpsi)/dx/dx * w[l]*dx
+                m += SigAbs*outer(psi, psi) * w[l]*dx
+
+            # # uncomment to see the local (stiffness+mass) matrix and local load vector
+            # print(k)
+            # print(m)
+            # print(f)
+            # sys.exit()
+
+            if (self.nnodes == self.nels*2):
+                # neutron current, J, treatments for DFEM
+                # current set up, only valid for linear FEs
+                #  - can make higher order FEs by generalizing
+                if el == 0:
+                    curr = self.Curr_iplus(curr, el)
+                elif el == self.nels-1:
+                    curr = self.Curr_iminus(curr, el)
+                else:
+                    curr = self.Curr_iminus(curr, el)
+                    curr = self.Curr_iplus(curr, el)
+
+            for idx in range(0, self.order[el]):
+                rhsf[self.nod[el, idx]] += f[idx]
+                for idy in range(0, self.order[el]):
+                    stiff[self.nod[el, idx], self.nod[el, idy]] += k[idx][idy]
+                    mass[self.nod[el, idx], self.nod[el, idy]] += m[idx][idy]
+
+        # print("Global Current Matrix")
+        # for idx in range(0, self.nnodes):
+        #     for idy in range(0, self.nnodes):
+        #         print("{0: .3f} ".format(curr[idx, idy]), end='')
+        #     print("")
+        # sys.exit()
+        self.soln = zeros(self.nnodes)
+        mat = add(curr,add(stiff, mass))
+        # if Dirichlet boundary conditions eliminate known values from the system
+        # self.soln[0] = 10.0 #self.u(self.bounds[0])
+        # self.soln[-1] = 0.0 #self.u(self.bounds[1])
+        # rhsf = subtract(rhsf, dot(mat, self.soln)) # used for non-zero Dirichlet BCs
+        # SOLVE! (for coefficients of finite elements, still not the \emph{actual} solution)
+        # self.soln[1:] = linalg.solve(mat[1:, 1:], rhsf[1:])
+        # self.soln[:-1] = linalg.solve(mat[:-1, :-1], rhsf[:-1])
+        # self.soln[1:-1] = linalg.solve(mat[1:-1, 1:-1], rhsf[1:-1])
+
+        # if Reflecting BCs
+        self.soln = linalg.solve(mat, rhsf)
+
+
     def CFEM_1D(self):
         """
         Solves a two-point BVP using continuous Galerkin finite elements
@@ -68,14 +147,14 @@ class BVP_Solvers(mesh, func):
         self.soln = zeros(self.nnodes)
         mat = add(stiff, mass)
         # if Dirichlet boundary conditions eliminate known values from the system
-        # self.soln[0] = self.u(self.bounds[0])
+        self.soln[0] = self.u(self.bounds[0])
         # self.soln[-1] = self.u(self.bounds[1])
-        # rhsf = np.subtract(rhsf , np.dot(mat,sol)) # used for non-zero Dirichlet BCs
+        rhsf = subtract(rhsf, dot(mat, self.soln)) # used for non-zero Dirichlet BCs
         # SOLVE! (for coefficients of finite elements, still not the \emph{actual} solution)
-        # self.soln[1:-1] = linalg.solve(mat[1:-1, 1:-1], rhsf[1:-1])
+        self.soln[1:] = linalg.solve(mat[1:, 1:], rhsf[1:])
 
         # if Reflecting BCs
-        self.soln = linalg.solve(mat, rhsf)
+        # self.soln = linalg.solve(mat, rhsf)
 
     def DFEM_1D(self):
         """
@@ -96,6 +175,7 @@ class BVP_Solvers(mesh, func):
             k = zeros((self.order[el], self.order[el]))  # element stiffness matrix
             m = zeros((self.order[el], self.order[el]))  # element stiffness matrix
             f = zeros(self.order[el])     # element load vector
+            # tmp_m = zeros((self.order[el], self.order[el]))  # element mass matrix
             for l in range(0, nw):
                 # x runs in true element, xw runs in reference element
                 x = xL + (1.0 + xw[l])*dx
@@ -107,23 +187,34 @@ class BVP_Solvers(mesh, func):
                 f += fval * psi * w[l]*dx
                 k += Dval*outer(dpsi, dpsi)/dx/dx * w[l]*dx
                 m += SigAbs*outer(psi, psi) * w[l]*dx
+                # tmp_m += outer(psi, psi) * w[l]*dx
 
             # uncomment to see the local (stiffness+mass) matrix and local load vector
             # print(k)
             # print(m)
             # print(f)
+            # if el == 0:
+            #     b = dot(tmp_m, array([self.f(xL), self.f(xR)]))
+            # else:
+            #     xL = self.xnod[self.nod[el-1, self.order[el-1]-1]]
+            #     b = dot(tmp_m, array([self.f(xL), self.f(xR)]))
+            
+            # print(tmp_m)
+            # print(array([self.f(xL), self.f(xR)]))
+            
+            # print("{0:.4e}, {1:.4e} -> [{2:.4e}, {3:.4e}]".format(xL, xR, self.f(xL), self.f(xR)))
             # sys.exit()
 
             # neutron current, J, treatments
             # current set up, only valid for linear FEs 
             #  - can make higher order FEs by generalizing 
             if el == 0:
-                self.Curr_iplus(curr, el)
-            elif (el == self.nels-1):
-                self.Curr_iminus(curr, el)
-            else:
-                self.Curr_iminus(curr, el)
-                self.Curr_iplus(curr, el)
+                curr = self.Curr_iplus(curr, el)
+            elif el == self.nels-1:
+                curr = self.Curr_iminus(curr, el)
+            else:  # if el > 0 and el < self.nels-1: #
+                curr = self.Curr_iminus(curr, el)
+                curr = self.Curr_iplus(curr, el)
 
 
             # add the computed element stiffness matrix and load vector to the global matrix and vector
@@ -151,8 +242,14 @@ class BVP_Solvers(mesh, func):
         #     print("")
         # print("RHSF")
         # for idx in range(0, self.nnodes):
-        #     print("{0: .3f}".format(rhsf[idx]))
+        #     print("{0: .3f} {1: .3f}".format(self.xnod[idx],rhsf[idx]))
+        # for idx in range(1, self.nnodes-1, 2):
+        #     rhsf[idx] = (rhsf[idx]+rhsf[idx+1])/2.0
+        #     rhsf[idx+1] = rhsf[idx]
+        # for idx in range(0, self.nnodes):
+        #     print("{0: .3f} {1: .3f}".format(self.xnod[idx], rhsf[idx]))
         # sys.exit()
+
 
         self.soln = zeros(self.nnodes)
         mat = add(curr,add(stiff,mass))
@@ -163,8 +260,23 @@ class BVP_Solvers(mesh, func):
         #     print("")
         # sys.exit()
 
+        # self.soln[0] = self.u(self.bounds[0])
+        # self.soln[-1] = self.u(self.bounds[1])
+        # rhsf = subtract(rhsf, dot(mat, self.soln)) # used for non-zero Dirichlet BCs
+        # SOLVE! (for coefficients of finite elements, still not the \emph{actual} solution)
+        # self.soln[1:] = linalg.solve(mat[1:, 1:], rhsf[1:])
+
         self.soln = linalg.solve(mat, rhsf)
 
+    def mass_lump(self, m):
+        [row, col] = m.shape
+        for i in range(0,row):
+            tmp = 0.0
+            for j in range(0,col):
+                tmp += m[i][j]
+            m[i][i] = tmp
+        return m
+    
     def Curr_iplus(self, curr, el):
         """
         current treatment for J_{i+1/2}
@@ -265,8 +377,8 @@ class BVP_Solvers(mesh, func):
         plots CFEM solution to BVP (red) with analytic MMS solution (blue)
         """
         plt.figure(1)
-        xplot = linspace(self.bounds[0], self.bounds[1], self.nels*NumPts+1)
-        plt.plot(xplot, self.u(xplot), linewidth = 2, color = 'blue')
+        # xplot = linspace(self.bounds[0], self.bounds[1], 100)
+        # plt.plot(xplot, self.u(xplot), linewidth = 2, color = 'blue')
 
         for el in range(0, self.nels):
             xL = self.xnod[self.nod[el, 0]]
@@ -283,12 +395,26 @@ class BVP_Solvers(mesh, func):
                     uhval += self.soln[mynum]*psi[k]
                 ypp[j] = uhval
 
-            plt.plot(xpp,ypp, linewidth=2, color = 'red')
+            # if string == "DFEM":    
+            #     plt.plot(xpp,ypp, ".-",linewidth=1, color = 'blue')
+            # else:
+            #     plt.plot(xpp,ypp, ".-",linewidth=1, color = 'red')
+            if self.nels == 16:
+                plt.plot(xpp, ypp, ".-", linewidth=1, color='red')
+            elif self.nels == 32:
+                plt.plot(xpp,ypp, ".-",linewidth=1, color = 'blue')
+            elif self.nels == 64:
+                plt.plot(xpp,ypp, ".-",linewidth=1, color = 'green')
         
-        plt.title("Exact solution (blue) and BVP {0} solution (red)".format(string))
+        # plt.title("Exact solution (blue) and BVP {0} solution (red)".format(string))
         plt.xlabel('Space')
         plt.grid(True)
-        plt.show()
+        # if string == "DFEM":
+            # plt.title("DFEM (blue) and CFEM (red)")
+        #     # plt.title("CFEM (red)")
+        if self.nels == 64:
+            plt.title("#Elem = 16 (red) and #Elem = 64 (green)")
+            plt.show()
 
     def Spatial_Convergence(self, L2Error, H1Error, h, flag=False):
         """
