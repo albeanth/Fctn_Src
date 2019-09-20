@@ -24,8 +24,8 @@ class func:
             print("\nReflecting BCs ", end="")
         elif self.selection == 2:
             print("\nDirichlet left, reflecting right ",end="")
-        elif self.selection == 3:
-            print("\nNumerical ringing test ",end="")
+        elif self.selection == 4:
+            print("\nNumerical ringing test ",end="\n")
         if self.hetero == 1:
             print("with homogeneous cross sections.",end="\n\n")
         elif self.hetero == 2:
@@ -84,13 +84,13 @@ class func:
             val = 1.0 # homogeneous case
         elif self.hetero == 2:
             val = x+1.0  # heterogeneous case
-        elif self.hetero == 3:
+        elif self.selection == 4:
             if x < 2:
-                val = 1E-4
+                val = 1.0E-4
             elif x < 4:
                 val = 100.0
             else:
-                val = 2.0
+                val = 100.0
         else:
             print("def SigA(self, x): unknown heterogeneity selection!")
             exit(-1)
@@ -100,18 +100,7 @@ class func:
         """
         diffusion coefficient, D(x)
         """
-        if ((self.hetero == 1) or (self.hetero == 2)):
-            val = 1.0/(3.0*self.SigA(x)) # heterogeneous case
-        elif self.hetero == 3:
-            if x < 2:
-                val = 4
-            elif x < 4:
-                val = 1.0
-            else:
-                val = 1.0
-        else:
-            print("def D(self, x): unknown material selection!")
-            exit(-1)
+        val = 1.0/(3.0*self.SigA(x)) # heterogeneous case
         return val
 
     def Dx(self, x):
@@ -128,16 +117,15 @@ class func:
         """
         source using T and Tp that defines the MMS problem
         """
-        if ((self.selection == 1) or (self.selection == 2)):
+        if ((self.selection == 1) or (self.selection == 2) or (self.selection == 3)):
             val = -(self.Dx(x)*self.up(x) + self.D(x)*self.upp(x)) + self.SigA(x)*self.u(x)
-        elif self.selection == 3:
+        elif self.selection == 4:
             if x < 2:
-                val = 50.0
+                val = 100.0
             elif x < 4:
-                val = 50.0
+                val = 2.0
             else:
-                val = 0.0
-            return val
+                val = 2.0
         else:
             print("def f(self, x): unknown problem selection!")
             exit(-1)

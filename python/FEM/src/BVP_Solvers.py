@@ -94,10 +94,11 @@ class BVP_Solvers(mesh, func):
             self.soln[0] = self.u(self.bounds[0])
             subtract(rhsf, dot(mat, self.soln), out=rhsf) # used for non-zero Dirichlet BCs
             self.soln[1:] = linalg.solve(mat[1:, 1:], rhsf[1:])
-        elif self.selection == 3:
-            self.soln[0] = self.u(self.bounds[0])
-            self.soln[-1] = self.u(self.bounds[1])
-            subtract(rhsf, dot(mat, self.soln), out=rhsf) # used for non-zero Dirichlet BCs
+        elif self.selection == 4:
+            self.soln = linalg.solve(mat, rhsf)
+            # self.soln[0] = 25.0
+            # self.soln[-1] = 10.0
+            # subtract(rhsf, dot(mat, self.soln), out=rhsf) # used for non-zero Dirichlet BCs
             # self.soln[1:-1] = linalg.solve(mat[1:-1, 1:-1], rhsf[1:-1])
         else:
             # if Reflecting BCs
