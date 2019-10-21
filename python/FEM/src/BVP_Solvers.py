@@ -3,6 +3,15 @@ import sys
 from numpy import zeros, outer, linalg, linspace, add, subtract, dot, array
 from math import sqrt, log
 import matplotlib.pyplot as plt
+try:
+    from colorama import Fore, Style, init
+    init(autoreset=True)
+    Yellow = Fore.YELLOW; Red = Fore.RED; Green = Fore.GREEN; Cyan = Fore.CYAN; Magenta = Fore.MAGENTA
+    StyDim = Style.DIM
+except ImportError:
+    print('\nYou should get colorama. It\'s pretty sweet.\n')
+    Yellow = ''; Red = ''; Green = ''; Cyan = ''; Magenta = ''
+    StyDim = ''
 
 # import user defined functions and classes
 from src.QuadParams import QP
@@ -22,7 +31,7 @@ class BVP_Solvers(mesh, func):
     def __init__(self, choice, material):
         func.__init__(self, choice, material)
     
-    def General_1D(self):
+    def CFEM_1D(self):
         """
         Solves a two-point BVP using Galerkin finite elements
         - automatically switches between continuous or discontinuous 
@@ -31,10 +40,9 @@ class BVP_Solvers(mesh, func):
         nw, xw, w = QP(self.maxord)
 
         ## set up matrix and rhs of linear system
-        stiff = zeros((self.nnodes, self.nnodes))
-        mass = zeros((self.nnodes, self.nnodes))
-        curr = zeros((self.nnodes, self.nnodes)) # "current" matrix used in DFEM (default to zeros for CFEM)
-        rhsf = zeros( self.nnodes )
+        self.stiff = zeros((self.nnodes, self.nnodes))
+        self.mass = zeros((self.nnodes, self.nnodes))
+        self.rhsf = zeros( self.nnodes )
         for el in range(0, self.nels):
             xL = self.xnod[self.nod[el, 0]]
             xR = self.xnod[self.nod[el, self.order[el]-1]]
@@ -62,59 +70,43 @@ class BVP_Solvers(mesh, func):
             # print(f)
             # sys.exit()
 
-            if (self.nnodes == self.nels*2):
-                # neutron current, J, treatments for DFEM
-                # current set up, only valid for linear FEs
-                #  - can make higher order FEs by generalizing
-                if el == 0:
-                    curr = self.Curr_iplus(curr, el)
-                elif el == self.nels-1:
-                    curr = self.Curr_iminus(curr, el)
-                else:
-                    curr = self.Curr_iminus(curr, el)
-                    curr = self.Curr_iplus(curr, el)
-
             for idx in range(0, self.order[el]):
-                rhsf[self.nod[el, idx]] += f[idx]
+                self.rhsf[self.nod[el, idx]] += f[idx]
                 for idy in range(0, self.order[el]):
-                    stiff[self.nod[el, idx], self.nod[el, idy]] += k[idx][idy]
-                    mass[self.nod[el, idx], self.nod[el, idy]] += m[idx][idy]
+                    self.stiff[self.nod[el, idx], self.nod[el, idy]] += k[idx][idy]
+                    self.mass[self.nod[el, idx], self.nod[el, idy]] += m[idx][idy]
 
-        # print("Global Current Matrix")
-        # for idx in range(0, self.nnodes):
-        #     for idy in range(0, self.nnodes):
-        #         print("{0: .3f} ".format(curr[idx, idy]), end='')
-        #     print("")
-        # sys.exit()
         self.soln = zeros(self.nnodes)
-        mat = add(curr,add(stiff, mass))
+        mat = add(self.stiff, self.mass)
         # SOLVE! (for coefficients of finite elements, still not the \emph{actual} solution)
         if self.selection == 2:
             # if Dirichlet boundary conditions eliminate known values from the system
             self.soln[0] = self.u(self.bounds[0])
-            subtract(rhsf, dot(mat, self.soln), out=rhsf) # used for non-zero Dirichlet BCs
-            self.soln[1:] = linalg.solve(mat[1:, 1:], rhsf[1:])
+            subtract(self.rhsf, dot(mat, self.soln), out=self.rhsf) # used for non-zero Dirichlet BCs
+            self.soln[1:] = linalg.solve(mat[1:, 1:], self.rhsf[1:])
         elif self.selection == 4:
-            self.soln = linalg.solve(mat, rhsf)
+            self.soln = linalg.solve(mat, self.rhsf)
             # self.soln[0] = 25.0
             # self.soln[-1] = 10.0
-            # subtract(rhsf, dot(mat, self.soln), out=rhsf) # used for non-zero Dirichlet BCs
-            # self.soln[1:-1] = linalg.solve(mat[1:-1, 1:-1], rhsf[1:-1])
+            # subtract(self.rhsf, dot(mat, self.soln), out=self.rhsf) # used for non-zero Dirichlet BCs
+            # self.soln[1:-1] = linalg.solve(mat[1:-1, 1:-1], self.rhsf[1:-1])
         else:
             # if Reflecting BCs
-            self.soln = linalg.solve(mat, rhsf)
+            self.soln = linalg.solve(mat, self.rhsf)
 
-
-    def CFEM_1D(self):
+    def DFEM_1D(self):
         """
-        Solves a two-point BVP using continuous Galerkin finite elements
+        Solves a two-point BVP using Galerkin finite elements
+        - automatically switches between continuous or discontinuous 
+          based on mesh it has access to
         """
         nw, xw, w = QP(self.maxord)
 
         ## set up matrix and rhs of linear system
-        stiff = zeros((self.nnodes, self.nnodes))
-        mass = zeros((self.nnodes, self.nnodes))
-        rhsf = zeros( self.nnodes )
+        self.stiff = zeros((self.nnodes, self.nnodes))
+        self.mass = zeros((self.nnodes, self.nnodes))
+        self.curr = zeros((self.nnodes, self.nnodes)) # "current" matrix used in DFEM (default to zeros for CFEM)
+        self.rhsf = zeros( self.nnodes )
         for el in range(0, self.nels):
             xL = self.xnod[self.nod[el, 0]]
             xR = self.xnod[self.nod[el, self.order[el]-1]]
@@ -142,135 +134,50 @@ class BVP_Solvers(mesh, func):
             # print(f)
             # sys.exit()
 
-            for idx in range(0, self.order[el]):
-                rhsf[self.nod[el, idx]] += f[idx]
-                for idy in range(0, self.order[el]):
-                    stiff[self.nod[el, idx], self.nod[el, idy]] += k[idx][idy]
-                    mass[self.nod[el, idx], self.nod[el, idy]] += m[idx][idy]
-
-        self.soln = zeros(self.nnodes)
-        mat = add(stiff, mass)
-        # if Dirichlet boundary conditions eliminate known values from the system
-        self.soln[0] = self.u(self.bounds[0])
-        # self.soln[-1] = self.u(self.bounds[1])
-        subtract(rhsf, dot(mat, self.soln), out=rhsf) # used for non-zero Dirichlet BCs
-        # SOLVE! (for coefficients of finite elements, still not the \emph{actual} solution)
-        self.soln[1:] = linalg.solve(mat[1:, 1:], rhsf[1:])
-
-        # if Reflecting BCs
-        # self.soln = linalg.solve(mat, rhsf)
-
-    def DFEM_1D(self):
-        """
-        Solves a two-point BVP using discontinuous Galerkin finite elements
-        """
-        nw, xw, w = QP(self.maxord)
-
-        ## set up matrix and rhs of linear system
-        stiff = zeros((self.nnodes, self.nnodes))
-        mass = zeros((self.nnodes, self.nnodes))
-        curr = zeros((self.nnodes, self.nnodes))
-        rhsf = zeros(self.nnodes)
-        for el in range(0, self.nels):
-            xL = self.xnod[self.nod[el, 0]]
-            xR = self.xnod[self.nod[el, self.order[el]-1]]
-            dx = (xR - xL)/2.0
-            # compute element stiffness matrix and rhs (load) vector
-            k = zeros((self.order[el], self.order[el]))  # element stiffness matrix
-            m = zeros((self.order[el], self.order[el]))  # element stiffness matrix
-            f = zeros(self.order[el])     # element load vector
-            # tmp_m = zeros((self.order[el], self.order[el]))  # element mass matrix
-            for l in range(0, nw):
-                # x runs in true element, xw runs in reference element
-                x = xL + (1.0 + xw[l])*dx
-                # calculations on ref element
-                psi, dpsi = shape(xw[l], self.order[el])
-                Dval = self.D(x)
-                SigAbs = self.SigA(x)
-                fval = self.f(x)
-                f += fval * psi * w[l]*dx
-                k += Dval*outer(dpsi, dpsi)/dx/dx * w[l]*dx
-                m += SigAbs*outer(psi, psi) * w[l]*dx
-                # tmp_m += outer(psi, psi) * w[l]*dx
-
-            # uncomment to see the local (stiffness+mass) matrix and local load vector
-            # print(k)
-            # print(m)
-            # print(f)
-            # if el == 0:
-            #     b = dot(tmp_m, array([self.f(xL), self.f(xR)]))
-            # else:
-            #     xL = self.xnod[self.nod[el-1, self.order[el-1]-1]]
-            #     b = dot(tmp_m, array([self.f(xL), self.f(xR)]))
-            
-            # print(tmp_m)
-            # print(array([self.f(xL), self.f(xR)]))
-            
-            # print("{0:.4e}, {1:.4e} -> [{2:.4e}, {3:.4e}]".format(xL, xR, self.f(xL), self.f(xR)))
-            # sys.exit()
-
-            # neutron current, J, treatments
+            # neutron current, J, treatments for DFEM
             # current set up, only valid for linear FEs 
             #  - can make higher order FEs by generalizing 
             if el == 0:
-                curr = self.Curr_iplus(curr, el)
+                self.Curr_iplus(el)
             elif el == self.nels-1:
-                curr = self.Curr_iminus(curr, el)
-            else:  # if el > 0 and el < self.nels-1: #
-                curr = self.Curr_iminus(curr, el)
-                curr = self.Curr_iplus(curr, el)
+                self.Curr_iminus(el)
+            else:
+                self.Curr_iminus(el)
+                self.Curr_iplus(el)
 
-
-            # add the computed element stiffness matrix and load vector to the global matrix and vector
-            for idx in range(0,self.order[el]):
-                rhsf[self.nod[el, idx]] += f[idx]
+            for idx in range(0, self.order[el]):
+                self.rhsf[self.nod[el, idx]] += f[idx]
                 for idy in range(0, self.order[el]):
-                    stiff[self.nod[el, idx], self.nod[el, idy]] += k[idx][idy]
-                    mass[self.nod[el, idx], self.nod[el, idy]] += m[idx][idy]
+                    self.stiff[self.nod[el, idx], self.nod[el, idy]] += k[idx][idy]
+                    self.mass[self.nod[el, idx], self.nod[el, idy]] += m[idx][idy]
 
-        # uncomment to see the global stiffness matrix and load vector
-        # print("Global Stiffness Matrix")
+        # print("Writing Out Global Matrices")
+        # cmat = open('CurrentMatrix.csv','w'); print("  current matrix")
+        # mmat = open('MassMatrix.csv','w'); print("  self.mass matrix")
+        # kmat = open('StiffMatrix.csv','w'); print("  stiffness matrix")
         # for idx in range(0, self.nnodes):
         #     for idy in range(0, self.nnodes):
-        #         print("{0: .3f} ".format(stiff[idx,idy]),end='')
-        #     print("")
-        # print("Global Mass Matrix")
+        #         cmat.write("{0:.5e},".format(curr[idx, idy]))
+        #         mmat.write("{0:.5e},".format(self.mass[idx, idy]))
+        #         kmat.write("{0:.5e},".format(self.stiff[idx, idy]))
+        #     cmat.write("\n")
+        #     mmat.write("\n")
+        #     kmat.write("\n")
+        # cmat.close()
+        # mmat.close()
+        # kmat.close()
+        # for i in range(0,self.nnodes):
+        #     print("{0:.3e} {1:.6e}".format(self.xnod[i], self.rhsf[i]))
+        mat = add(self.curr, add(self.stiff, self.mass))
+        # print("Writing Out Global Matrix")
+        # gmat = open('GlobalMatrix.csv','w'); print("  global matrix")
         # for idx in range(0, self.nnodes):
         #     for idy in range(0, self.nnodes):
-        #         print("{0: .3f} ".format(mass[idx,idy]),end='')
-        #     print("")
-        # print("Global Current Matrix")
-        # for idx in range(0, self.nnodes):
-        #     for idy in range(0, self.nnodes):
-        #         print("{0: .3f} ".format(curr[idx,idy]),end='')
-        #     print("")
-        # print("RHSF")
-        # for idx in range(0, self.nnodes):
-        #     print("{0: .3f} {1: .3f}".format(self.xnod[idx],rhsf[idx]))
-        # for idx in range(1, self.nnodes-1, 2):
-        #     rhsf[idx] = (rhsf[idx]+rhsf[idx+1])/2.0
-        #     rhsf[idx+1] = rhsf[idx]
-        # for idx in range(0, self.nnodes):
-        #     print("{0: .3f} {1: .3f}".format(self.xnod[idx], rhsf[idx]))
+        #         gmat.write("{0:.5e},".format(mat[idx, idy]))
+        #     gmat.write("\n")
+        # gmat.close()
         # sys.exit()
-
-
-        self.soln = zeros(self.nnodes)
-        mat = add(curr,add(stiff,mass))
-        # print("Global Combined Matrix")
-        # for idx in range(0, self.nnodes):
-        #     for idy in range(0, self.nnodes):
-        #         print("{0: .3f} ".format(mat[idx, idy]), end='')
-        #     print("")
-        # sys.exit()
-
-        # self.soln[0] = self.u(self.bounds[0])
-        # self.soln[-1] = self.u(self.bounds[1])
-        # subtract(rhsf, dot(mat, self.soln), out=rhsf) # used for non-zero Dirichlet BCs
-        # SOLVE! (for coefficients of finite elements, still not the \emph{actual} solution)
-        # self.soln[1:] = linalg.solve(mat[1:, 1:], rhsf[1:])
-
-        self.soln = linalg.solve(mat, rhsf)
+        self.soln = linalg.solve(mat, self.rhsf)
 
     def mass_lump(self, m):
         [row, col] = m.shape
