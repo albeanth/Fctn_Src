@@ -153,11 +153,11 @@ class BVP_Solvers(mesh, func):
 
         # print("Writing Out Global Matrices")
         # cmat = open('CurrentMatrix.csv','w'); print("  current matrix")
-        # mmat = open('MassMatrix.csv','w'); print("  self.mass matrix")
+        # mmat = open('MassMatrix.csv','w'); print("  mass matrix")
         # kmat = open('StiffMatrix.csv','w'); print("  stiffness matrix")
         # for idx in range(0, self.nnodes):
         #     for idy in range(0, self.nnodes):
-        #         cmat.write("{0:.5e},".format(curr[idx, idy]))
+        #         cmat.write("{0:.5e},".format(self.curr[idx, idy]))
         #         mmat.write("{0:.5e},".format(self.mass[idx, idy]))
         #         kmat.write("{0:.5e},".format(self.stiff[idx, idy]))
         #     cmat.write("\n")
@@ -166,8 +166,11 @@ class BVP_Solvers(mesh, func):
         # cmat.close()
         # mmat.close()
         # kmat.close()
+        # print("Global RHS")
         # for i in range(0,self.nnodes):
         #     print("{0:.3e} {1:.6e}".format(self.xnod[i], self.rhsf[i]))
+        # sys.exit()
+        self.soln = zeros(self.nnodes)
         mat = add(self.curr, add(self.stiff, self.mass))
         # print("Writing Out Global Matrix")
         # gmat = open('GlobalMatrix.csv','w'); print("  global matrix")
@@ -177,6 +180,17 @@ class BVP_Solvers(mesh, func):
         #     gmat.write("\n")
         # gmat.close()
         # sys.exit()
+        if ((self.selection == 0) or (self.selection == 1) or (self.selection == 2) or (self.selection == 3) or (self.selection == 5)):
+            self.soln[0] = self.u(self.bounds[0])
+            self.soln[-1] = self.u(self.bounds[-1])
+            subtract(self.rhsf, dot(mat, self.soln), out=self.rhsf) # used for non-zero Dirichlet BCs
+            self.soln[1:-1] = linalg.solve(mat[1:-1, 1:-1], self.rhsf[1:-1])
+        elif self.selection == 6:
+            # if Dirichlet boundary conditions eliminate known values from the system
+            self.soln[0] = self.u(self.bounds[0])
+            subtract(self.rhsf, dot(mat, self.soln), out=self.rhsf) # used for non-zero Dirichlet BCs
+            self.soln[1:] = linalg.solve(mat[1:, 1:], self.rhsf[1:])
+        else:
         self.soln = linalg.solve(mat, self.rhsf)
 
     def mass_lump(self, m):
@@ -188,7 +202,7 @@ class BVP_Solvers(mesh, func):
             m[i][i] = tmp
         return m
     
-    def Curr_iplus(self, curr, el):
+    def Curr_iplus(self, el):
         """
         current treatment for J_{i+1/2}
         """
@@ -196,17 +210,16 @@ class BVP_Solvers(mesh, func):
         xL = self.xnod[self.nod[el+1, 0]]
         xR = self.xnod[self.nod[el+1, 1]]
         dx = xR-xL
-        curr[self.nod[el, 1], self.nod[el+1, 0]] = -( 1.0/4.0 - self.D(xL)/(2.0*dx) )# \phi_{i+1,L}
-        curr[self.nod[el, 1], self.nod[el+1, 1]] = -( self.D(xL)/(2.0*dx)           )# \phi_{i+1,R}
+        self.curr[self.nod[el, 1], self.nod[el+1, 0]] = -1.0/4.0 + self.D(xL)/(2.0*dx) # \phi_{i+1,L} 
+        self.curr[self.nod[el, 1], self.nod[el+1, 1]] = -self.D(xL)/(2.0*dx)           # \phi_{i+1,R}
         # el
         xL = self.xnod[self.nod[el, 0]]
         xR = self.xnod[self.nod[el, 1]]
         dx = xR-xL
-        curr[self.nod[el, 1], self.nod[el, 0]] =  self.D(xR)/(2.0*dx)           # \phi_{i,L}
-        curr[self.nod[el, 1], self.nod[el, 1]] =  1.0/4.0 - self.D(xR)/(2.0*dx) # \phi_{i,R}
-        return curr
+        self.curr[self.nod[el, 1], self.nod[el, 0]] =  self.D(xR)/(2.0*dx)           # \phi_{i,L}
+        self.curr[self.nod[el, 1], self.nod[el, 1]] =  1.0/4.0 - self.D(xR)/(2.0*dx) # \phi_{i,R}
 
-    def Curr_iminus(self, curr, el):
+    def Curr_iminus(self, el):
         """
         current treatment for J_{i-1/2}
         """
@@ -214,15 +227,14 @@ class BVP_Solvers(mesh, func):
         xL = self.xnod[self.nod[el-1, 0]]
         xR = self.xnod[self.nod[el-1, 1]]
         dx = xR-xL
-        curr[self.nod[el, 0], self.nod[el-1, 0]] = -( self.D(xR)/(2.0*dx)           )# \phi_{i-1,L}
-        curr[self.nod[el, 0], self.nod[el-1, 1]] = -( 1.0/4.0 - self.D(xR)/(2.0*dx) )# \phi_{i-1,R}
+        self.curr[self.nod[el, 0], self.nod[el-1, 0]] = -self.D(xR)/(2.0*dx)           # \phi_{i-1,L}
+        self.curr[self.nod[el, 0], self.nod[el-1, 1]] = -1.0/4.0 + self.D(xR)/(2.0*dx) # \phi_{i-1,R}
         # el
         xL = self.xnod[self.nod[el, 0]]
         xR = self.xnod[self.nod[el, 1]]
         dx = xR-xL
-        curr[self.nod[el, 0], self.nod[el, 0]] = 1.0/4.0 - self.D(xL)/(2.0*dx) # \phi_{i,L}
-        curr[self.nod[el, 0], self.nod[el, 1]] = self.D(xL)/(2.0*dx)           # \phi_{i,R}
-        return curr
+        self.curr[self.nod[el, 0], self.nod[el, 0]] = 1.0/4.0 - self.D(xL)/(2.0*dx) # \phi_{i,L}
+        self.curr[self.nod[el, 0], self.nod[el, 1]] = self.D(xL)/(2.0*dx)           # \phi_{i,R}
 
     def L2Error(self):
         """
