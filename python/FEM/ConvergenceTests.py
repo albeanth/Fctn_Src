@@ -16,11 +16,11 @@ except ImportError:
 
 # import user defined class
 from src.BVP_Solvers import BVP_Solvers as BVP
-NumOfElem = [4,8,16,32,64,128,256,512,1024]
-# NumOfElem = [16]
+# NumOfElem = [4,8,16,32,64,128,256,512,1024]
+NumOfElem = [128]
 h = zeros(len(NumOfElem))
-Problem = 2
-Hetero = 2
+Problem = 5
+Hetero = True
 #====================#
 #    CFEM BVP TEST   #
 #=====================
@@ -28,26 +28,45 @@ L2Error = ones(len(NumOfElem))
 H1Error = ones(len(NumOfElem))
 InfError = ones(len(NumOfElem))
 InfErr_Loc = ones(len(NumOfElem))
+LocalError = ones(len(NumOfElem))
 CFEM = BVP(Problem, Hetero)  # create instance of BVP Solver for CFEM work
 for i,ne in enumerate(NumOfElem):
-    if Problem == 1:
-        CFEM.CFEMGrid1D(0, pi, ne, 1) # set up CFEM grid
-    elif Problem == 2:
-        CFEM.CFEMGrid1D(0.0, 3.0*pi/2.0, ne, 1)  # set up CFEM grid
+    if ((Problem == 0) or (Problem == 1)):
+        CFEM.CFEMGrid1D(0.0, 1, ne, 1)
+    elif ((Problem == 2) or (Problem == 5)):
+        CFEM.CFEMGrid1D(0.0, 2, ne, 1)
     elif Problem == 3:
+        CFEM.CFEMGrid1D(0.0, 3, ne, 1)
+    elif Problem == 4:
+        CFEM.CFEMGrid1D(0, pi, ne, 1) # set up CFEM grid
+    elif Problem == 6:
+        CFEM.CFEMGrid1D(0.0, 3.0*pi/2.0, ne, 1)  # set up CFEM grid
+    elif Problem == 7:
         CFEM.CFEMGrid1D(0, 6.0, ne, 1) # set up CFEM grid
 
-    CFEM.General_1D()                  # call BVP CFEM solver
-    CFEM.L2Error()                    # compute L2 and H1 error
-    CFEM.LinfError()
-    L2Error[i] = CFEM.l2Err
-    H1Error[i] = CFEM.h1Err
-    InfError[i] = CFEM.linf_ErrVal
-    InfErr_Loc[i] = CFEM.linf_Loc
-    h[i] = CFEM.hmax
+    CFEM.CFEM_1D()                  # call BVP CFEM solver
+    # for val in zip(CFEM.xnod, CFEM.soln):
+    #     print("{0:.12e} {1:.12e}".format(val[0], val[1]))
+    if Problem != 6:
+        CFEM.L2Error()                    # compute L2 and H1 error
+        CFEM.LinfError()
+        CFEM.LocalError(0.85)
+        L2Error[i] = CFEM.l2Err
+        H1Error[i] = CFEM.h1Err
+        InfError[i] = CFEM.linf_ErrVal
+        InfErr_Loc[i] = CFEM.linf_Loc
+        LocalError[i] = CFEM.loc_err
+        h[i] = CFEM.hmax
 
-    # CFEM.Plot(2, "CFEM")
-CFEM.Spatial_Convergence(L2Error, H1Error, h, False)
+print("    h       L2Error   LocalError")
+for val in zip(h, L2Error,LocalError):
+    print("{0:.4e} {1:.4e} {2:.4e}".format(val[0], val[1], val[2]))
+
+if len(NumOfElem) == 1:
+    CFEM.Plot_Both(2, "CFEM")
+
+if ((Problem != 5) or (Problem != 7)):
+    CFEM.Spatial_Convergence(L2Error, H1Error, LocalError, h, False)
 
 #====================#
 #    DFEM BVP TEST   #
@@ -56,43 +75,39 @@ DG_L2Error = ones(len(NumOfElem))
 DG_H1Error = ones(len(NumOfElem))
 DG_InfError = ones(len(NumOfElem))
 DG_InfErr_Loc = ones(len(NumOfElem))
+DG_LocalError = ones(len(NumOfElem))
 DFEM = BVP(Problem, Hetero)
 for i,ne in enumerate(NumOfElem):
-    if Problem == 1:
-        DFEM.DFEMGrid1D(0.0, pi, ne, 1)
-    elif Problem == 2:
-        DFEM.DFEMGrid1D(0.0, 3.0*pi/2.0, ne, 1)
+    if ((Problem == 0) or (Problem == 1)):
+        DFEM.DFEMGrid1D(0.0, 1, ne, 1)
+    elif ((Problem == 2) or (Problem == 5)):
+        DFEM.DFEMGrid1D(0.0, 2, ne, 1)
     elif Problem == 3:
+        DFEM.DFEMGrid1D(0.0, 3, ne, 1)
+    elif Problem == 4:
+        DFEM.DFEMGrid1D(0.0, pi, ne, 1)
+    elif Problem == 6:
+        DFEM.DFEMGrid1D(0.0, 3.0*pi/2.0, ne, 1)
+    elif Problem == 7:
         DFEM.DFEMGrid1D(0, 6.0, ne, 1) 
-    DFEM.General_1D()
-    DFEM.L2Error()
-    DFEM.LinfError()
-    DG_L2Error[i] = DFEM.l2Err
-    DG_H1Error[i] = DFEM.h1Err
-    DG_InfError[i] = DFEM.linf_ErrVal
-    DG_InfErr_Loc[i] = DFEM.linf_Loc
-    h[i] = DFEM.hmax
+    DFEM.DFEM_1D()
+    if Problem != 7:
+        DFEM.L2Error()
+        DFEM.LinfError()
+        DFEM.LocalError(0.85)
+        DG_L2Error[i] = DFEM.l2Err
+        DG_H1Error[i] = DFEM.h1Err
+        DG_InfError[i] = DFEM.linf_ErrVal
+        DG_InfErr_Loc[i] = DFEM.linf_Loc
+        DG_LocalError[i] = DFEM.loc_err
+        h[i] = DFEM.hmax
 
-# # print(DG_InfErr_Loc)
-# # DFEM.Plot(2, "DFEM")
-DFEM.Spatial_Convergence(DG_L2Error, DG_H1Error, h, False)
-# # plt.figure(2)
-# # x = linspace(0, pi, 100)#3.0*pi/2.0)
-# # plt.plot(x, CFEM.u(x), '-', linewidth=1, color='black')
-# # plt.plot(CFEM.xnod, CFEM.soln, '-', linewidth=1, color='blue')
-# # for idx in range(0, DFEM.nnodes, 2):
-# #     plt.plot(DFEM.xnod[idx:idx+2], DFEM.soln[idx:idx+2], '-', linewidth=1, color='red')
-# # plt.xlabel('Space')
-# # plt.grid(True)
-# # plt.show()
+print("    h       L2Error   LocalError")
+for val in zip(h, DG_L2Error, DG_LocalError):
+    print("{0:.4e} {1:.4e} {2:.4e}".format(val[0], val[1], val[2]))
 
-# plt.figure(3)
-# plt.loglog(h, InfError, 'x-', linewidth=2, color='red',label='CFEM')
-# plt.loglog(h, h**2/100, ':', linewidth=2, color='red', alpha=0.5)
-# plt.loglog(h, DG_InfError, 'x-', linewidth=2, color='blue',label='DFEM')
-# plt.loglog(h, h/10, ':', linewidth=2, color='blue', alpha=0.5)
-# plt.xlabel('dx')
-# plt.grid(True)
-# plt.legend()
-# plt.show()
+if len(NumOfElem) == 1:
+    DFEM.Plot_Both(2, "DFEM")
 
+if ((Problem != 5) or (Problem != 7)):
+    DFEM.Spatial_Convergence(DG_L2Error, DG_H1Error, DG_LocalError, h, True)
