@@ -294,6 +294,40 @@ class BVP_Solvers(mesh, func):
             print("Max error not found! That doesn't make sense...")
             sys.exit()
 
+    def LocalError(self, x):
+        """
+        computes the local error at some given point, x
+        """
+        # get element number based on position, x
+        el = 0
+        a = self.hel
+        while a < self.bounds[1]:
+            if x < a:
+                break
+            else:
+                el += 1
+            a += self.hel
+        if el > self.nels-1:
+            print("\n\n  in get_CellNum\n")
+            print("  el for mat map in x is greater than the problem domain, this is a problem\n\n")
+            sys.exit()
+        # get left and right node position of element, el
+        xL = self.xnod[self.nod[el, 0]]
+        xR = self.xnod[self.nod[el, self.order[el]-1]]
+        dx = (xR - xL)/2.0
+        # evaluation reference function at x in real element
+        uval = self.u(x)
+        # map x to reference element
+        xww = (x-xL)/dx - 1.0
+        psi, dpsi = shape(xww, self.order[el])
+        uhval = 0.0
+        for k in range(0, self.order[el]):
+            mynum = self.nod[el, k]
+            uhval += self.soln[mynum]*psi[k]
+        # get error at middle of given cell
+        # print("  -> Computing Local Error at x={0:.4e}".format(x))
+        # print("      uval, uhval = {0:.4e}, {1:.4e}".format(uval, uhval))
+        self.loc_err = abs(uval - uhval)
     
     def Plot(self, NumPts=10, string="CFEM"):
         """
