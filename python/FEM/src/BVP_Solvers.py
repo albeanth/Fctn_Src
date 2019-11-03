@@ -329,6 +329,45 @@ class BVP_Solvers(mesh, func):
         # print("      uval, uhval = {0:.4e}, {1:.4e}".format(uval, uhval))
         self.loc_err = abs(uval - uhval)
     
+    def Plot_Both(self, NumPts=10, string="CFEM"):
+        """
+        plots CFEM solution to BVP (red) with analytic MMS solution (blue)
+        """
+        plt.figure(1)
+        if self.selection != 4 and string == "DFEM":
+            xplot = linspace(self.bounds[0], self.bounds[1], 300)
+            ref = zeros(len(xplot))
+            for i,x in enumerate(xplot):
+                ref[i] = self.u(x)
+            plt.plot(xplot, ref, linewidth = 2, color = 'green')
+
+        for el in range(0, self.nels):
+            xL = self.xnod[self.nod[el, 0]]
+            xR = self.xnod[self.nod[el, self.order[el]-1]]
+            dx = (xR - xL)/2.0
+            xpp = linspace(xL, xR, NumPts)
+            xww = (xpp-xL)/dx - 1.0
+            ypp = zeros(NumPts)
+            for j in range(0, NumPts):
+                psi, dpsi = shape(xww[j], self.order[el])
+                uhval = 0.0
+                for k in range(0, self.order[el]):
+                    mynum = self.nod[el, k]
+                    uhval += self.soln[mynum]*psi[k]
+                ypp[j] = uhval
+
+            if string == "DFEM":    
+                plt.plot(xpp,ypp, ".-",linewidth=1, color = 'blue')
+            else:
+                plt.plot(xpp,ypp, ".-",linewidth=1, color = 'red')
+        
+        # plt.title("Exact solution (blue) and BVP {0} solution (red)".format(string))
+        plt.xlabel('Space')
+        plt.grid(True)
+        if string == "DFEM":
+            plt.title("DFEM (blue) and CFEM (red)")
+            plt.show()
+
     def Plot(self, NumPts=10, string="CFEM"):
         """
         plots CFEM solution to BVP (red) with analytic MMS solution (blue)
