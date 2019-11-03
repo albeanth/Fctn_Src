@@ -339,12 +339,13 @@ class BVP_Solvers(mesh, func):
             plt.title("#Elem = 16 (red) and #Elem = 64 (green)")
             plt.show()
 
-    def Spatial_Convergence(self, L2Error, H1Error, h, flag=False):
+    def Spatial_Convergence(self, L2Error, H1Error, LocalError, h, flag=False):
         """
         computes the convergence of the L2/H1Error as a function of mesh refinement, h
         INPUT:
             L2Error = vector, computed as a function of h
             H1Error = vector, computed as a function of h
+            LocalError = vector, computed as a function of h
             h       = vector, mesh refinement
         OUTPUT:
             if flag == False
@@ -356,24 +357,32 @@ class BVP_Solvers(mesh, func):
             print("Only one mesh discretization tested, mesh convergence plots not applicable.")
         else:
             # compute convergence and show table
-            print("dx\t   L2Conv   H1Conv")
+            print("dx\t   L2Conv   H1Conv   LocalConv")
             print("{0:.3e}  --\t    --".format(h[0]))
-            for i in range(1,len(L2Error)-1):
-                conv_l2 = ( log(L2Error[i-1]) - log(L2Error[i]) ) / ( log(h[i-1]) - log(h[i]) )
-                conv_h1 = ( log(H1Error[i-1]) - log(H1Error[i]) ) / ( log(h[i-1]) - log(h[i]) )
-                print("{0:.3e}  {1:.3f}    {2:.3f}".format(h[i+1], conv_l2, conv_h1))
+            for i in range(0,len(L2Error)-1):
+                try:
+                    conv_l2 = ( log(L2Error[i]) - log(L2Error[i+1]) ) / ( log(h[i]) - log(h[i+1]) )
+                except ValueError:
+                    conv_l2 == 0.0
+                try:
+                    conv_h1 = ( log(H1Error[i]) - log(H1Error[i+1]) ) / ( log(h[i]) - log(h[i+1]) )
+                except ValueError:
+                    conv_h1 = 0.0
+                try:
+                    conv_local = ( log(LocalError[i]) - log(LocalError[i+1]) ) / ( log(h[i]) - log(h[i+1]) )
+                except ValueError:
+                    conv_local = 0.0
+                print("{0:.3e}  {1:.3f}    {2:.3f}    {3:.3f}".format(h[i+1], conv_l2, conv_h1, conv_local))
             if flag == True:
                 plt.figure(2)
                 # plt.subplot(121)
-                plt.loglog(h, h**2, 'x-', linewidth=2, label='O(-2)')
+                plt.loglog(h, h**2/10, 'x-', linewidth=2, label='O(-2)', alpha=0.35)
                 plt.loglog(h, L2Error, 'x-', linewidth=2, label='L2Error')
-                plt.loglog(h, h, 'x-', linewidth=2, label='O(-1)')
-                plt.loglog(h, H1Error, 'x-', linewidth=2, label='H1Error')
-                plt.legend(loc='upper left')
+                plt.loglog(h, LocalError, 'x-', linewidth=2, label='LInfError')
+                plt.loglog(h, h**3/10, 'x-', linewidth=2, label='O(-3)', alpha=0.35)
+                plt.xlabel('dx')
+                plt.legend(loc='best')
                 plt.grid(True, which='both', axis='y', alpha=0.5)
-                # plt.subplot(122)
-                # plt.legend(loc='upper left')
-                # plt.grid(True, which='both', axis='y', alpha=0.5)
                 plt.show()
 
 
