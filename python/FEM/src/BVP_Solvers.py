@@ -79,17 +79,17 @@ class BVP_Solvers(mesh, func):
         self.soln = zeros(self.nnodes)
         mat = add(self.stiff, self.mass)
         # SOLVE! (for coefficients of finite elements, still not the \emph{actual} solution)
-        if self.selection == 2:
+        if ((self.selection == 0) or (self.selection == 1) or (self.selection == 2) or (self.selection == 3) or (self.selection == 5)):
+            # if Dirichlet boundary conditions eliminate known values from the system
+            self.soln[0] = self.u(self.bounds[0])
+            self.soln[-1] = self.u(self.bounds[-1])
+            subtract(self.rhsf, dot(mat, self.soln), out=self.rhsf) # used for non-zero Dirichlet BCs
+            self.soln[1:-1] = linalg.solve(mat[1:-1, 1:-1], self.rhsf[1:-1])
+        elif self.selection == 6:
             # if Dirichlet boundary conditions eliminate known values from the system
             self.soln[0] = self.u(self.bounds[0])
             subtract(self.rhsf, dot(mat, self.soln), out=self.rhsf) # used for non-zero Dirichlet BCs
             self.soln[1:] = linalg.solve(mat[1:, 1:], self.rhsf[1:])
-        elif self.selection == 4:
-            self.soln = linalg.solve(mat, self.rhsf)
-            # self.soln[0] = 25.0
-            # self.soln[-1] = 10.0
-            # subtract(self.rhsf, dot(mat, self.soln), out=self.rhsf) # used for non-zero Dirichlet BCs
-            # self.soln[1:-1] = linalg.solve(mat[1:-1, 1:-1], self.rhsf[1:-1])
         else:
             # if Reflecting BCs
             self.soln = linalg.solve(mat, self.rhsf)
