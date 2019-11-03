@@ -27,14 +27,14 @@ class mesh:
         self.bounds = [a,b]
         if isinstance(xnel,int) == True:  # uniform grid
             self.nels = xnel
-            hel = (b-a)/self.nels  # spacing of elements (uniform)
-            xel = arange(a, b, hel)
+            self.hel = (b-a)/self.nels  # spacing of elements (uniform)
+            xel = arange(a, b, self.hel)
         else:
             self.nels = len(xnel)
             xel = xnel
-            hel = zeros(self.nels-1)
+            self.hel = zeros(self.nels-1)
             for k in arange(0, self.nels-1):
-                hel[k] = xnel[k+1]-xnel[k]  # spacing of elements (non-uniform)
+                self.hel[k] = xnel[k+1]-xnel[k]  # spacing of elements (non-uniform)
 
         # set up the order of elements = 1 + degree of polynomial = number of degrees of freedom
         # e.g. for linears, use two degrees of freedom for each element
@@ -72,9 +72,9 @@ class mesh:
             self.xnod[self.nod[k, j]] = xel[k] + hi*j
 
         try:
-            self.hmax = max(hel)
+            self.hmax = max(self.hel)
         except TypeError:
-            self.hmax = hel
+            self.hmax = self.hel
 
     def DFEMGrid1D(self, a, b, xnel, myorder, delta=finfo(float).resolution):
         """
@@ -96,14 +96,14 @@ class mesh:
         self.bounds = [a, b]
         if isinstance(xnel, int) == True:  # uniform grid
             self.nels = xnel
-            hel = (b-a)/self.nels  # spacing of elements (uniform)
-            xel = arange(a, b, hel)
+            self.hel = (b-a)/self.nels  # spacing of elements (uniform)
+            xel = arange(a, b, self.hel)
         else:
             self.nels = len(xnel)
             xel = xnel
-            hel = zeros(self.nels-1)
+            self.hel = zeros(self.nels-1)
             for k in arange(0, self.nels-1):
-                hel[k] = xnel[k+1]-xnel[k]  # spacing of elements (non-uniform)
+                self.hel[k] = xnel[k+1]-xnel[k]  # spacing of elements (non-uniform)
 
         # set up the order of elements = 1 + degree of polynomial = number of degrees of freedom
         # e.g. for linears, use two degrees of freedom for each element
@@ -122,7 +122,7 @@ class mesh:
                 # print(j,k)
 
         # # uncomment to see the way the nodes and cell edges are numbered
-        # print(Magenta+'nod\n'+str(self.nod))
+        # print(self.nod)
         # sys.exit()
 
         # xnod , i=1..nnodes
@@ -148,6 +148,6 @@ class mesh:
                 self.xnod[self.nod[k, j]] = self.xnod[self.nod[k, j-1]] + hi
 
         try:
-            self.hmax = max(hel)
+            self.hmax = max(self.hel)
         except TypeError:
-            self.hmax = hel
+            self.hmax = self.hel
