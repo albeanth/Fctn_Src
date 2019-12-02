@@ -7,7 +7,7 @@
 #include <iostream>
 #include <stdexcept>
 
-class TestFunction : public UtilityFunctions{
+class TestFunction{
     /*
     Defines the function, derivative, and source required for
     a method of manufactured solutions (MMS) problem set up to
@@ -26,6 +26,7 @@ class TestFunction : public UtilityFunctions{
         // Public member variables and functions
         const int selection;
         const bool hetero;
+        char help[120];
         void display_selection();
         double u(const double x);
         double up(const double x);
@@ -33,6 +34,6 @@ class TestFunction : public UtilityFunctions{
         double SigA(const double x);
         double D(const double x);
         double Dx(const double x);
-        double f(const double x);
+        double MMS_Src(const double x);
 };
 #endif

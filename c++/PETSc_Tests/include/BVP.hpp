@@ -3,8 +3,9 @@
 #define __BVP_H_INCLUDED__
 
 // headers for dependents (what this class needs to function)
+#include "SetUpGrid.hpp"    // <- parent class
 #include "TestFunction.hpp" // <- parent class
-#include "SetUpGrid.hpp" // <- parent class
+#include <petscksp.h>
 #include <vector>
 
 class BVP : public TestFunction, public SetUpGrid{
@@ -13,11 +14,11 @@ class BVP : public TestFunction, public SetUpGrid{
     or discontinuous Galerkin finite elements
     */
     public:
-    BVP(const int a, const bool b): TestFunction(a, b), SetUpGrid(){};
+    BVP(const int test_num, const bool hetero): TestFunction(test_num, hetero), SetUpGrid(){};
     // Public member variables
     std::vector<double> soln;
     // Public member functions
-    void CFEM_1D();
+    PetscErrorCode CFEM_1D(int argc, char **args);
 };
 
 #endif

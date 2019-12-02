@@ -6,10 +6,10 @@ void TestFunction::display_selection(){
     */
     try {
       if (selection == 0) {
-        printf("\nLinear Solution test, Dirichlet BCs left and right, ");
+        strcpy(help, "\nLinear Solution test, Dirichlet BCs left and right, ");
       } 
       else if (selection == 1) {
-        printf("\nNonlinear Solution test, Dirichlet BCs left and right, ");
+        strcpy(help, "\nNonlinear Solution test, Dirichlet BCs left and right, ");
       } 
       else {
         throw std::invalid_argument("unknown problem selection");
@@ -21,10 +21,10 @@ void TestFunction::display_selection(){
     }
 
     if (hetero == false) {
-        printf("with homogeneous cross sections.\n\n");
+        strcat(help, "with homogeneous cross sections.\n\n");
     } 
     else if (hetero == true) {
-        printf("with heterogeneous cross sections.\n\n");
+        strcat(help, "with heterogeneous cross sections.\n\n");
     }
 }
 
@@ -105,9 +105,9 @@ double TestFunction::Dx(const double x){
     return val;
 }
 
-double TestFunction::f(const double x){
-    /*
-    source that defines the MMS problem
-    */
-    return -(Dx(x)*up(x) + D(x)*upp(x)) + SigA(x)*u(x);
+double TestFunction::MMS_Src(const double x) {
+  /*
+  source that defines the MMS problem
+  */
+  return -(Dx(x) * up(x) + D(x) * upp(x)) + SigA(x) * u(x);
 }

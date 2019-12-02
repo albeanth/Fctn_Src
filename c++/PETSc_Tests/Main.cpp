@@ -2,7 +2,7 @@
 #include <iostream>
 #include <vector>
 
-int main(){
+int main(int argc,char **args){
     const std::vector<int> NumOfElem {32};
     const int selection {0};
     const bool hetero {false};
@@ -13,7 +13,7 @@ int main(){
     BVP CFEM(selection, hetero);
     for (int i=0; i<NumOfElem.size(); i++){
         CFEM.add_CFEMGrid(NumOfElem[i], 1, Bnds);
-        CFEM.CFEM_1D();
+        CFEM.CFEM_1D(argc, args);
     }
 
 
