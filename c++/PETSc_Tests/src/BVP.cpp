@@ -77,33 +77,51 @@ PetscErrorCode BVP::AssignEvaldBasis(const int ord, const double dx, const Petsc
     function used to take outer products of basis functions
     for the local matrices over each FE
     */
+    PetscScalar x = 1.0/pow(dx, 2.0);
     PetscScalar v[ord];
-    PetscInt i[] = {0,1};
-    PetscInt j[] = {0,1};
+    PetscScalar zero[ord];
+    PetscInt i[ord], j[ord];
+    for (int idx = 0; idx < ord; idx++){
+      zero[idx] = static_cast<double>(0);
+      i[idx] = idx;
+      j[idx] = idx;
+    }
     /* get all vector entries (vector of length ord) and store them in v*/ 
     ierr = VecGetValues(shape1d.psi, ord, i, v); CHKERRQ(ierr);
     /* insert vector, v, into -> (2 rows, rows 0 and 1, 1 col, cols 0, ...)*/
     ierr = MatSetValues(psi, ord, i, 1, &j[0], v, INSERT_VALUES); CHKERRQ(ierr);
-    // repeat process for dpsi matrix 
-    VecGetValues(shape1d.dpsi, ord, i, v); CHKERRQ(ierr); ierr =
-    MatSetValues(dpsi, 1, j, ord, i, v, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = MatSetValues(psi, ord, i, 1, &j[1], zero, INSERT_VALUES); CHKERRQ(ierr);
+    /* repeat process for dpsi matrix  */
+    ierr = VecGetValues(shape1d.dpsi, ord, i, v); CHKERRQ(ierr);
+    ierr = MatSetValues(dpsi, ord, i, 1, &j[0], v, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = MatSetValues(dpsi, ord, i, 1, &j[1], zero, INSERT_VALUES); CHKERRQ(ierr);
 
-    // assemle matrices
+    /* assemle matrices */
     ierr = MatAssemblyBegin(psi, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
     ierr = MatAssemblyEnd(psi, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
     ierr = MatAssemblyBegin(dpsi, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
     ierr = MatAssemblyEnd(dpsi, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+
+    /* generate local matrices, psiMat and dpsiMat */
+    ierr = MatMatTransposeMult(psi, psi, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &psiMat); CHKERRQ(ierr);
+    ierr = MatMatTransposeMult(dpsi, dpsi, MAT_INITIAL_MATRIX, PETSC_DEFAULT, &dpsiMat); CHKERRQ(ierr);
+    ierr = MatScale(dpsiMat, x); CHKERRQ(ierr);
 
     /* View/print to screen matrices
        format:
        row 0: (col #, <value>) (col #, <value>)
        row 1: (col #, <value>) (col #, <value>)
     */
-    ierr = MatView(psi, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
-    ierr = MatView(dpsi, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
-    exit(-1);
+    // printf(YELLOW "\npsi" RESET "\n");
+    // ierr = MatView(psi, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+    // printf(YELLOW "\ndpsi" RESET "\n");
+    // ierr = MatView(dpsi, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+    // printf(YELLOW "\npsiMat" RESET "\n");
+    // ierr = MatView(psiMat, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+    // printf(YELLOW "\ndpsiMat" RESET "\n");
+    // ierr = MatView(dpsiMat, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+    // exit(-1);
 
-    // ierr = PetscScalarView(1, &v, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
     return ierr;
 }
 
@@ -175,8 +193,10 @@ PetscErrorCode BVP::PetscEvalBasis1D(const double x, const int n, PetscShapeFunc
   ierr = VecAssemblyEnd(shape.dpsi); CHKERRQ(ierr);
   
   // view the vectors
-  ierr = VecView(shape.psi, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr); // petsc_viewer_stdout_world allows for
-  ierr = VecView(shape.dpsi, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr); // sequential and parallel vectors
+  // printf(YELLOW "\nshape.psi" RESET "\n");
+  // ierr = VecView(shape.psi, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr); // petsc_viewer_stdout_world allows for
+  // printf(YELLOW "\nshape.dpsi" RESET "\n");
+  // ierr = VecView(shape.dpsi, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr); // sequential and parallel vectors
 
   return ierr;
 }

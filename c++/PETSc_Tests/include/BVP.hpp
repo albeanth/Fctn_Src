@@ -8,6 +8,13 @@
 #include <petscksp.h>
 #include <vector>
 
+// ANSI Color Codes for color output
+#define GREEN "\x1b[32m"
+#define RED "\x1b[31m"
+#define YELLOW "\x1b[33m"
+#define GRAY "\x1b[37m"
+#define RESET "\x1b[0m"
+
 struct PetscShapeFunction1D {
   Vec psi, dpsi;
 };
