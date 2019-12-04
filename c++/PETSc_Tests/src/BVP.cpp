@@ -14,7 +14,15 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
 
     /* PETSc matrices and vector declarations */
     PetscInt N = info.nnodes;
-    PetscInt ord = info.order[0];
+    ord = info.order[0];
+    zero = new PetscScalar[ord];
+    i = new PetscInt[ord];
+    j = new PetscInt[ord];
+    for (int idx = 0; idx < ord; idx++) {
+      zero[idx] = static_cast<double>(0);
+      i[idx] = idx;
+      j[idx] = idx;
+    }
     // Initialize global stiffness and mass matrices and global rhsf vector
     ierr = MatCreate(PETSC_COMM_WORLD, &stiff); CHKERRQ(ierr);
     ierr = MatSetSizes(stiff, PETSC_DECIDE, PETSC_DECIDE, N, N); CHKERRQ(ierr);
@@ -24,11 +32,15 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
     ierr = VecSetSizes(rhsf, PETSC_DECIDE, N); CHKERRQ(ierr);
     // Declare m, k, f local matrices/vectors
     ierr = MatCreate(PETSC_COMM_WORLD, &m); CHKERRQ(ierr);
-    ierr = MatSetSizes(m, PETSC_DECIDE, PETSC_DECIDE, ord, ord); CHKERRQ(ierr);
     ierr = MatCreate(PETSC_COMM_WORLD, &k); CHKERRQ(ierr);
-    ierr = MatSetSizes(k, PETSC_DECIDE, PETSC_DECIDE, ord, ord); CHKERRQ(ierr);
     ierr = VecCreate(PETSC_COMM_WORLD, &f); CHKERRQ(ierr);
+    ierr = MatSetSizes(m, PETSC_DECIDE, PETSC_DECIDE, ord, ord); CHKERRQ(ierr);
+    ierr = MatSetSizes(k, PETSC_DECIDE, PETSC_DECIDE, ord, ord); CHKERRQ(ierr);
     ierr = VecSetSizes(f, PETSC_DECIDE, ord); CHKERRQ(ierr);
+    ierr = MatSetUp(m); CHKERRQ(ierr);
+    ierr = MatSetUp(k); CHKERRQ(ierr);
+    ierr = VecSetFromOptions(f); CHKERRQ(ierr);
+    ierr = InitializeLocalMatrices(); CHKERRQ(ierr);
     // Declare shape function matrices
     ierr = MatCreate(PETSC_COMM_WORLD, &dpsi); CHKERRQ(ierr);
     ierr = MatCreate(PETSC_COMM_WORLD, &psi); CHKERRQ(ierr);
@@ -61,31 +73,64 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
             /* evaluate basis functions */
             ierr = PetscEvalBasis1D(qps1d.xw[l1], info.order[elem], shape1d); CHKERRQ(ierr);
             /* assign eval'd shape funcs to petsc matrices */
-            ierr = AssignEvaldBasis(ord, dx, shape1d); CHKERRQ(ierr);
+            ierr = AssignEvaldBasis(dx, shape1d); CHKERRQ(ierr);
             /* evaluate known functions */
             Dval = D(x);
             SigAbs = SigA(x);
             fval = MMS_Src(x);
+            /* scale and add local FE matrices */
+            ierr = VecScale(shape1d.psi, fval * qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecAXPY(f, 1.0, shape1d.psi); CHKERRQ(ierr);
+
+            ierr = MatScale(dpsiMat, Dval * qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = MatAXPY(k, 1.0, dpsiMat, SAME_NONZERO_PATTERN); CHKERRQ(ierr);
+
+            ierr = MatScale(psiMat, SigAbs * qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = MatAXPY(m, 1.0, psiMat, SAME_NONZERO_PATTERN); CHKERRQ(ierr);
+        }
+        /* print local FE matrices and RHS vector */
+        // ierr = MatAssemblyBegin(m, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+        // ierr = MatAssemblyEnd(m, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+        // ierr = MatAssemblyBegin(k, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+        // ierr = MatAssemblyEnd(k, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+        // printf(YELLOW "\nf" RESET "\n");
+        // ierr = VecView(f, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+        // printf(YELLOW "\npsiMat" RESET "\n");
+        // ierr = MatView(m, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+        // printf(YELLOW "\ndpsiMat" RESET "\n");
+        // ierr = MatView(k, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+        // exit(-1);
+        /* map local matrices to global matrices */
+
+        // set all matrix/vector entries equal to zero (while maintaining structure)
+        ierr = InitializeLocalMatrices(); CHKERRQ(ierr);
+    }
+    /* assign the boundary conditions */
+    /* Do the linear algebra */
+    /* clean up petsc stuff */
 
     // all petsc based functions need to end with PetscFinalize()
     ierr = PetscFinalize();
     return ierr;
 }
 
-PetscErrorCode BVP::AssignEvaldBasis(const int ord, const double dx, const PetscShapeFunction1D &shape1d){
+PetscErrorCode BVP::InitializeLocalMatrices(){
+  /*
+  used to initialize local FE matrices. Sets everything to 0.0. 
+  */
+  ierr = MatSetValues(m, ord, i, ord, j, zero, INSERT_VALUES); CHKERRQ(ierr);
+  ierr = MatSetValues(k, ord, i, ord, j, zero, INSERT_VALUES); CHKERRQ(ierr);
+  ierr = VecSet(f, 0.0); CHKERRQ(ierr);
+  return ierr;
+}
+
+PetscErrorCode BVP::AssignEvaldBasis(const double dx, const PetscShapeFunction1D &shape1d){
     /*
     function used to take outer products of basis functions
     for the local matrices over each FE
     */
     PetscScalar x = 1.0/pow(dx, 2.0);
     PetscScalar v[ord];
-    PetscScalar zero[ord];
-    PetscInt i[ord], j[ord];
-    for (int idx = 0; idx < ord; idx++){
-      zero[idx] = static_cast<double>(0);
-      i[idx] = idx;
-      j[idx] = idx;
-    }
     /* get all vector entries (vector of length ord) and store them in v*/ 
     ierr = VecGetValues(shape1d.psi, ord, i, v); CHKERRQ(ierr);
     /* insert vector, v, into -> (2 rows, rows 0 and 1, 1 col, cols 0, ...)*/

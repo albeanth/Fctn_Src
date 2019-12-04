@@ -31,6 +31,9 @@ class BVP : public TestFunction, public SetUpGrid{
         // Public member functions
         PetscErrorCode CFEM_1D(int argc, char **args);
     private:
+        PetscInt ord;
+        PetscScalar *zero;
+        PetscInt *i, *j;
         // PetscError code
         PetscErrorCode ierr;
         // Global PETSc matrices (n x n)
@@ -43,7 +46,8 @@ class BVP : public TestFunction, public SetUpGrid{
         Mat psi, dpsi, dpsiMat, psiMat;
 
         // Private member functions
-        PetscErrorCode AssignEvaldBasis(const int ord, const double dx, const PetscShapeFunction1D &shape1d);
+        PetscErrorCode InitializeLocalMatrices();
+        PetscErrorCode AssignEvaldBasis(const double dx, const PetscShapeFunction1D &shape1d);
         PetscErrorCode PetscEvalBasis1D(const double x, const int n, PetscShapeFunction1D &shape);
 };
 
