@@ -38,6 +38,10 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
     ierr = MatSetSizes(psi, PETSC_DECIDE, PETSC_DECIDE, ord, ord); CHKERRQ(ierr);
     ierr = MatSetSizes(dpsiMat, PETSC_DECIDE, PETSC_DECIDE, ord, ord); CHKERRQ(ierr);
     ierr = MatSetSizes(psiMat, PETSC_DECIDE, PETSC_DECIDE, ord, ord); CHKERRQ(ierr);
+    ierr = MatSetUp(dpsi); CHKERRQ(ierr);
+    ierr = MatSetUp(psi); CHKERRQ(ierr);
+    ierr = MatSetUp(dpsiMat); CHKERRQ(ierr);
+    ierr = MatSetUp(psiMat); CHKERRQ(ierr);
 
     QuadParams1D qps1d;
     get1D_QPs(info.maxord, qps1d);
@@ -57,7 +61,7 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
             /* evaluate basis functions */
             ierr = PetscEvalBasis1D(qps1d.xw[l1], info.order[elem], shape1d); CHKERRQ(ierr);
             /* assign eval'd shape funcs to petsc matrices */
-
+            ierr = AssignEvaldBasis(ord, dx, shape1d); CHKERRQ(ierr);
             /* evaluate known functions */
             Dval = D(x);
             SigAbs = SigA(x);
@@ -65,6 +69,41 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
 
     // all petsc based functions need to end with PetscFinalize()
     ierr = PetscFinalize();
+    return ierr;
+}
+
+PetscErrorCode BVP::AssignEvaldBasis(const int ord, const double dx, const PetscShapeFunction1D &shape1d){
+    /*
+    function used to take outer products of basis functions
+    for the local matrices over each FE
+    */
+    PetscScalar v[ord];
+    PetscInt i[] = {0,1};
+    PetscInt j[] = {0,1};
+    /* get all vector entries (vector of length ord) and store them in v*/ 
+    ierr = VecGetValues(shape1d.psi, ord, i, v); CHKERRQ(ierr);
+    /* insert vector, v, into -> (2 rows, rows 0 and 1, 1 col, cols 0, ...)*/
+    ierr = MatSetValues(psi, ord, i, 1, &j[0], v, INSERT_VALUES); CHKERRQ(ierr);
+    // repeat process for dpsi matrix 
+    VecGetValues(shape1d.dpsi, ord, i, v); CHKERRQ(ierr); ierr =
+    MatSetValues(dpsi, 1, j, ord, i, v, INSERT_VALUES); CHKERRQ(ierr);
+
+    // assemle matrices
+    ierr = MatAssemblyBegin(psi, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+    ierr = MatAssemblyEnd(psi, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+    ierr = MatAssemblyBegin(dpsi, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+    ierr = MatAssemblyEnd(dpsi, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+
+    /* View/print to screen matrices
+       format:
+       row 0: (col #, <value>) (col #, <value>)
+       row 1: (col #, <value>) (col #, <value>)
+    */
+    ierr = MatView(psi, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+    ierr = MatView(dpsi, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+    exit(-1);
+
+    // ierr = PetscScalarView(1, &v, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
     return ierr;
 }
 
@@ -130,14 +169,14 @@ PetscErrorCode BVP::PetscEvalBasis1D(const double x, const int n, PetscShapeFunc
     exit(1);
   }
   // Assemble the vectors
-  VecAssemblyBegin(shape.psi);
-  VecAssemblyBegin(shape.dpsi);
-  VecAssemblyEnd(shape.psi);
-  VecAssemblyEnd(shape.dpsi);
+  ierr = VecAssemblyBegin(shape.psi); CHKERRQ(ierr);
+  ierr = VecAssemblyBegin(shape.dpsi); CHKERRQ(ierr);
+  ierr = VecAssemblyEnd(shape.psi); CHKERRQ(ierr);
+  ierr = VecAssemblyEnd(shape.dpsi); CHKERRQ(ierr);
   
   // view the vectors
-  VecView(shape.psi, PETSC_VIEWER_STDOUT_WORLD);  // petsc_viewer_stdout_world allows for
-  VecView(shape.dpsi, PETSC_VIEWER_STDOUT_WORLD); // sequential and parallel vectors
+  ierr = VecView(shape.psi, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr); // petsc_viewer_stdout_world allows for
+  ierr = VecView(shape.dpsi, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr); // sequential and parallel vectors
 
   return ierr;
 }
