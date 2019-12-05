@@ -31,7 +31,7 @@ class BVP : public TestFunction, public SetUpGrid{
         // Public member functions
         PetscErrorCode CFEM_1D(int argc, char **args);
     private:
-        PetscInt ord;
+        PetscInt N, ord;
         PetscScalar *zero;
         PetscInt *i, *j, *ii, *jj;
         // PetscError code
@@ -45,8 +45,20 @@ class BVP : public TestFunction, public SetUpGrid{
         Vec f;
         // matrices used for generation of local petsc matrices (m & k)
         Mat psi, dpsi, dpsiMat, psiMat;
+        // Linear system and preconditioner declarations
+        Mat A;
+        Vec b, xVec;
+        KSP ksp;
+        PC pc;
+        // exact solution for error checking
+        Vec ExactSoln;
+        Vec error;
+        PetscReal norm;
+        PetscInt its;
 
         // Private member functions
+        PetscErrorCode CheckNumericalSoln();
+        PetscErrorCode DoLinearAlgebra();
         PetscErrorCode AssignLocalToGlobal(const std::vector<int> &tmp);
         PetscErrorCode InitializeLocalMatrices();
         PetscErrorCode AssignEvaldBasis(const double dx, const PetscShapeFunction1D &shape1d);

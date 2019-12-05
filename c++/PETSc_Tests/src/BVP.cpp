@@ -13,7 +13,7 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
     ierr = PetscOptionsGetInt(NULL,NULL,"-n",&n,NULL);CHKERRQ(ierr);
 
     /* PETSc matrices and vector declarations */
-    PetscInt N = info.nnodes;
+    N = info.nnodes;
     ord = info.order[0];
     zero = new PetscScalar[ord];
     i = new PetscInt[ord];
@@ -30,12 +30,15 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
     ierr = MatSetSizes(stiff, PETSC_DECIDE, PETSC_DECIDE, N, N); CHKERRQ(ierr);
     ierr = MatSetUp(stiff); CHKERRQ(ierr);
     ierr = MatSetUp(mass); CHKERRQ(ierr);
+    ierr = VecCreate(PETSC_COMM_WORLD, &ExactSoln); CHKERRQ(ierr);
     ierr = VecCreate(PETSC_COMM_WORLD, &soln); CHKERRQ(ierr);
     ierr = VecCreate(PETSC_COMM_WORLD, &rhsf); CHKERRQ(ierr);
     ierr = VecCreate(PETSC_COMM_WORLD, &rhsf_tmp); CHKERRQ(ierr);
+    ierr = VecSetSizes(ExactSoln, PETSC_DECIDE, N); CHKERRQ(ierr);
     ierr = VecSetSizes(soln, PETSC_DECIDE, N); CHKERRQ(ierr);
     ierr = VecSetSizes(rhsf, PETSC_DECIDE, N); CHKERRQ(ierr);
     ierr = VecSetSizes(rhsf_tmp, PETSC_DECIDE, N); CHKERRQ(ierr);
+    ierr = VecSetFromOptions(ExactSoln); CHKERRQ(ierr);
     ierr = VecSetFromOptions(soln); CHKERRQ(ierr);
     ierr = VecSetFromOptions(rhsf); CHKERRQ(ierr);
     ierr = VecSetFromOptions(rhsf_tmp); CHKERRQ(ierr);
@@ -69,7 +72,7 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
     get1D_QPs(info.maxord, qps1d);
     
     PetscShapeFunction1D shape1d;
-    
+
     double xL, xR, dx, x;
     double Dval, SigAbs, fval;
     for (int elem = 0; elem < info.nels; elem ++){
@@ -146,20 +149,102 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
       ierr = VecAXPY(rhsf, -1.0, rhsf_tmp); CHKERRQ(ierr);
       ierr = VecAssemblyBegin(rhsf); CHKERRQ(ierr);
       ierr = VecAssemblyEnd(rhsf); CHKERRQ(ierr);
-    }
-    /* print out combined mass matrix with BCs */
-    // printf(YELLOW "\nGlobal Mass" RESET "\n");
-    // ierr = MatView(mass, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
-    // printf(YELLOW "\nTotal RHSF" RESET "\n");
-    // ierr = VecView(rhsf, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
-    // exit(-1);
 
-    /* Do the linear algebra */
-    /* clean up petsc stuff */
+      /* initialize matrix A and rhsf b to pass to linear algebra solver */
+      PetscInt NewN = N-2;
+      ii = new PetscInt [NewN];
+      jj = new PetscInt [NewN];
+      for (int idx = 0; idx < NewN; idx++){
+        ii[idx] = idx+1;
+        jj[idx] = idx;
+      }
+      ierr = MatCreate(PETSC_COMM_WORLD, &A); CHKERRQ(ierr);
+      ierr = MatSetSizes(A, PETSC_DECIDE, PETSC_DECIDE, NewN, NewN); CHKERRQ(ierr);
+      ierr = MatSetUp(A); CHKERRQ(ierr);
+      PetscScalar MatVals [NewN*NewN], VecVals [NewN]; // to hold matrix/vector values in c arrays
+      ierr = MatGetValues(mass, NewN, ii, NewN, ii, MatVals); CHKERRQ(ierr);
+      ierr = MatSetValues(A, NewN, jj, NewN, jj, MatVals, ADD_VALUES); CHKERRQ(ierr);
+      
+      // printf(YELLOW "\nGlobal Total w/ BCs" RESET "\n");
+      // ierr = MatView(A, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+      // exit(-1);
+      ierr = VecCreate(PETSC_COMM_WORLD, &b); CHKERRQ(ierr);
+      ierr = VecSetSizes(b, PETSC_DECIDE, NewN); CHKERRQ(ierr);
+      ierr = VecSetFromOptions(b); CHKERRQ(ierr);
+      ierr = VecGetValues(rhsf, NewN, ii, VecVals); CHKERRQ(ierr);
+      ierr = VecSetValues(b, NewN, jj, VecVals, ADD_VALUES); CHKERRQ(ierr);
+
+      ierr = VecDuplicate(b, &xVec); CHKERRQ(ierr);
+
+      /* assemble linear system and RHS */
+      ierr = MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+      ierr = MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+      ierr = VecAssemblyBegin(b); CHKERRQ(ierr);
+      ierr = VecAssemblyEnd(b); CHKERRQ(ierr);
+      /* and do the linear algebra */
+      ierr = DoLinearAlgebra(); CHKERRQ(ierr);
+
+      /* combine numerical solution and BCs */
+      ierr = VecGetValues(xVec, NewN, jj, VecVals); CHKERRQ(ierr);
+      ierr = VecSetValues(soln, NewN, ii, VecVals, INSERT_VALUES); CHKERRQ(ierr);
+      // printf(YELLOW "\nNumerical Solution w/ BCs" RESET "\n");
+      // ierr = VecView(soln, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+    }
+    /* Check numerical solution */
+    ierr = CheckNumericalSoln(); CHKERRQ(ierr);
 
     // all petsc based functions need to end with PetscFinalize()
     ierr = PetscFinalize();
     return ierr;
+}
+
+PetscErrorCode BVP::CheckNumericalSoln(){
+  /* 
+  Check numerical solution 
+  */
+  PetscScalar uh, val;
+  printf(YELLOW "Exact and Numerical Solution" RESET "\n");
+  for (PetscInt idx = 0; idx < N; idx++){
+    val = u(info.xnod[idx]);
+    ierr = VecSetValue(ExactSoln, idx, val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(soln, 1, &idx, &uh);
+    ierr = PetscPrintf(PETSC_COMM_WORLD, "%.4e\t%.4e\n", double(val), double(uh));
+  }
+  ierr = VecAYPX(ExactSoln, -1.0, soln); CHKERRQ(ierr);
+  ierr = VecNorm(ExactSoln, NORM_2, &norm); CHKERRQ(ierr);
+  
+  // ierr = KSPGetIterationNumber(ksp, &its); CHKERRQ(ierr);
+  ierr = PetscPrintf(PETSC_COMM_WORLD, "Norm of error %g\n", (double)norm); CHKERRQ(ierr);
+  return ierr;
+}
+
+PetscErrorCode BVP::DoLinearAlgebra(){
+  /* print out combined mass matrix with BCs */
+  // printf(YELLOW "\nGlobal Mass" RESET "\n");
+  // ierr = MatView(A, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+  // printf(YELLOW "\nTotal RHSF" RESET "\n");
+  // ierr = VecView(b, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+  // exit(-1);
+
+  /* Do the linear algebra */
+  ierr = KSPCreate(PETSC_COMM_WORLD, &ksp); CHKERRQ(ierr);
+  ierr = KSPSetOperators(ksp, A, A); // setting Amat = Pmat is typical - see 73/278 of petsc user manual
+  // set linear solver defaults for the problem
+  // ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
+  // ierr = PCSetType(pc, PCJACOBI); CHKERRQ(ierr);
+  // ierr = KSPSetTolerances(ksp, 1e-5, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
+  // set runtime options THESE WILL OVERRIDE THE ABOVE THREE COMMANDS
+  ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
+  // SOLVE!
+  ierr = KSPSolve(ksp, b, xVec); CHKERRQ(ierr);
+  printf(YELLOW "\nNumerical Solution\n" RESET "\n");
+  ierr = VecView(xVec, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+  // view solver info
+  ierr = KSPView(ksp,PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+  
+  /* clear up ksp */
+  ierr = KSPDestroy(&ksp); CHKERRQ(ierr);
+  return ierr;
 }
 
 PetscErrorCode BVP::AssignLocalToGlobal(const std::vector<int> &tmp) {
