@@ -33,7 +33,7 @@ class BVP : public TestFunction, public SetUpGrid{
     private:
         PetscInt ord;
         PetscScalar *zero;
-        PetscInt *i, *j;
+        PetscInt *i, *j, *ii, *jj;
         // PetscError code
         PetscErrorCode ierr;
         // Global PETSc matrices (n x n)
@@ -46,6 +46,7 @@ class BVP : public TestFunction, public SetUpGrid{
         Mat psi, dpsi, dpsiMat, psiMat;
 
         // Private member functions
+        PetscErrorCode AssignLocalToGlobal(const std::vector<int> &tmp);
         PetscErrorCode InitializeLocalMatrices();
         PetscErrorCode AssignEvaldBasis(const double dx, const PetscShapeFunction1D &shape1d);
         PetscErrorCode PetscEvalBasis1D(const double x, const int n, PetscShapeFunction1D &shape);

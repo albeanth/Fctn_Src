@@ -25,11 +25,14 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
     }
     // Initialize global stiffness and mass matrices and global rhsf vector
     ierr = MatCreate(PETSC_COMM_WORLD, &stiff); CHKERRQ(ierr);
-    ierr = MatSetSizes(stiff, PETSC_DECIDE, PETSC_DECIDE, N, N); CHKERRQ(ierr);
     ierr = MatCreate(PETSC_COMM_WORLD, &mass); CHKERRQ(ierr);
-    ierr = MatSetSizes(mass, PETSC_DECIDE, PETSC_DECIDE, N, N); CHKERRQ(ierr);
     ierr = VecCreate(PETSC_COMM_WORLD, &rhsf); CHKERRQ(ierr);
+    ierr = MatSetSizes(mass, PETSC_DECIDE, PETSC_DECIDE, N, N); CHKERRQ(ierr);
+    ierr = MatSetSizes(stiff, PETSC_DECIDE, PETSC_DECIDE, N, N); CHKERRQ(ierr);
     ierr = VecSetSizes(rhsf, PETSC_DECIDE, N); CHKERRQ(ierr);
+    ierr = MatSetUp(stiff); CHKERRQ(ierr);
+    ierr = MatSetUp(mass); CHKERRQ(ierr);
+    ierr = VecSetFromOptions(rhsf); CHKERRQ(ierr);
     // Declare m, k, f local matrices/vectors
     ierr = MatCreate(PETSC_COMM_WORLD, &m); CHKERRQ(ierr);
     ierr = MatCreate(PETSC_COMM_WORLD, &k); CHKERRQ(ierr);
@@ -88,11 +91,13 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
             ierr = MatScale(psiMat, SigAbs * qps1d.w[l1] * dx); CHKERRQ(ierr);
             ierr = MatAXPY(m, 1.0, psiMat, SAME_NONZERO_PATTERN); CHKERRQ(ierr);
         }
+        /* assemble local FE matrices */
+        ierr = MatAssemblyBegin(m, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+        ierr = MatAssemblyEnd(m, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+        ierr = MatAssemblyBegin(k, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+        ierr = MatAssemblyEnd(k, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+        
         /* print local FE matrices and RHS vector */
-        // ierr = MatAssemblyBegin(m, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-        // ierr = MatAssemblyEnd(m, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-        // ierr = MatAssemblyBegin(k, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-        // ierr = MatAssemblyEnd(k, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
         // printf(YELLOW "\nf" RESET "\n");
         // ierr = VecView(f, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
         // printf(YELLOW "\npsiMat" RESET "\n");
@@ -100,11 +105,28 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
         // printf(YELLOW "\ndpsiMat" RESET "\n");
         // ierr = MatView(k, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
         // exit(-1);
+        
         /* map local matrices to global matrices */
+        ierr = AssignLocalToGlobal(info.nod[elem]); CHKERRQ(ierr);
 
         // set all matrix/vector entries equal to zero (while maintaining structure)
         ierr = InitializeLocalMatrices(); CHKERRQ(ierr);
     }
+    /* print out mass matrix for verification */
+    // ierr = MatAssemblyBegin(mass, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+    // ierr = MatAssemblyEnd(mass, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+    // printf(YELLOW "\nGlobal Mass" RESET "\n");
+    // ierr = MatView(mass, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+    
+    // ierr = MatAssemblyBegin(stiff, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+    // ierr = MatAssemblyEnd(stiff, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+    // printf(YELLOW "\nGlobal Stiff" RESET "\n");
+    // ierr = MatView(stiff, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+
+    // printf(YELLOW "\nGlobal RHSF" RESET "\n");
+    // ierr = VecView(rhsf, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+    // exit(-1);
+
     /* assign the boundary conditions */
     /* Do the linear algebra */
     /* clean up petsc stuff */
@@ -112,6 +134,32 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
     // all petsc based functions need to end with PetscFinalize()
     ierr = PetscFinalize();
     return ierr;
+}
+
+PetscErrorCode BVP::AssignLocalToGlobal(const std::vector<int> &tmp) {
+  /*
+  function to assign local FE matrices and rhsf vector to global 
+  linear system and RHS
+  */
+  // get indices for global matrix
+  ii = new PetscInt [ord];
+  jj = new PetscInt [ord];
+  for (int idx = 0; idx < ord; idx++) {
+    ii[idx] = tmp[idx];
+    jj[idx] = tmp[idx];
+  }
+  PetscScalar MatVals[ord*ord], VecVals[ord]; // to hold matrix/vector values in c arrays
+  // get values and assign for mass...
+  ierr = MatGetValues(m, 2, i, 2, j, MatVals); CHKERRQ(ierr);
+  ierr = MatSetValues(mass, ord, ii, ord, jj, MatVals, ADD_VALUES); CHKERRQ(ierr);
+  // ... stiffness ...
+  ierr = MatGetValues(k, 2, i, 2, j, MatVals); CHKERRQ(ierr);
+  ierr = MatSetValues(stiff, ord, ii, ord, jj, MatVals, ADD_VALUES); CHKERRQ(ierr);
+  // ... and rhsf ...
+  ierr = VecGetValues(f, ord, i, VecVals); CHKERRQ(ierr);
+  ierr = VecSetValues(rhsf, ord, ii, VecVals, ADD_VALUES); CHKERRQ(ierr);
+
+  return ierr;
 }
 
 PetscErrorCode BVP::InitializeLocalMatrices(){
