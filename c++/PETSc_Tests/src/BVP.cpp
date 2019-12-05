@@ -23,25 +23,32 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
       i[idx] = idx;
       j[idx] = idx;
     }
-    // Initialize global stiffness and mass matrices and global rhsf vector
+    // Initialize global stiffness and mass matrices and global rhsf/_tmp and solution vectors
     ierr = MatCreate(PETSC_COMM_WORLD, &stiff); CHKERRQ(ierr);
     ierr = MatCreate(PETSC_COMM_WORLD, &mass); CHKERRQ(ierr);
-    ierr = VecCreate(PETSC_COMM_WORLD, &rhsf); CHKERRQ(ierr);
     ierr = MatSetSizes(mass, PETSC_DECIDE, PETSC_DECIDE, N, N); CHKERRQ(ierr);
     ierr = MatSetSizes(stiff, PETSC_DECIDE, PETSC_DECIDE, N, N); CHKERRQ(ierr);
-    ierr = VecSetSizes(rhsf, PETSC_DECIDE, N); CHKERRQ(ierr);
     ierr = MatSetUp(stiff); CHKERRQ(ierr);
     ierr = MatSetUp(mass); CHKERRQ(ierr);
+    ierr = VecCreate(PETSC_COMM_WORLD, &soln); CHKERRQ(ierr);
+    ierr = VecCreate(PETSC_COMM_WORLD, &rhsf); CHKERRQ(ierr);
+    ierr = VecCreate(PETSC_COMM_WORLD, &rhsf_tmp); CHKERRQ(ierr);
+    ierr = VecSetSizes(soln, PETSC_DECIDE, N); CHKERRQ(ierr);
+    ierr = VecSetSizes(rhsf, PETSC_DECIDE, N); CHKERRQ(ierr);
+    ierr = VecSetSizes(rhsf_tmp, PETSC_DECIDE, N); CHKERRQ(ierr);
+    ierr = VecSetFromOptions(soln); CHKERRQ(ierr);
     ierr = VecSetFromOptions(rhsf); CHKERRQ(ierr);
+    ierr = VecSetFromOptions(rhsf_tmp); CHKERRQ(ierr);
+    ierr = VecZeroEntries(soln); CHKERRQ(ierr);
     // Declare m, k, f local matrices/vectors
     ierr = MatCreate(PETSC_COMM_WORLD, &m); CHKERRQ(ierr);
     ierr = MatCreate(PETSC_COMM_WORLD, &k); CHKERRQ(ierr);
-    ierr = VecCreate(PETSC_COMM_WORLD, &f); CHKERRQ(ierr);
     ierr = MatSetSizes(m, PETSC_DECIDE, PETSC_DECIDE, ord, ord); CHKERRQ(ierr);
     ierr = MatSetSizes(k, PETSC_DECIDE, PETSC_DECIDE, ord, ord); CHKERRQ(ierr);
-    ierr = VecSetSizes(f, PETSC_DECIDE, ord); CHKERRQ(ierr);
     ierr = MatSetUp(m); CHKERRQ(ierr);
     ierr = MatSetUp(k); CHKERRQ(ierr);
+    ierr = VecCreate(PETSC_COMM_WORLD, &f); CHKERRQ(ierr);
+    ierr = VecSetSizes(f, PETSC_DECIDE, ord); CHKERRQ(ierr);
     ierr = VecSetFromOptions(f); CHKERRQ(ierr);
     ierr = InitializeLocalMatrices(); CHKERRQ(ierr);
     // Declare shape function matrices
@@ -112,22 +119,41 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
         // set all matrix/vector entries equal to zero (while maintaining structure)
         ierr = InitializeLocalMatrices(); CHKERRQ(ierr);
     }
+    /* assemble global mass and stiffness matrices */
+    ierr = MatAssemblyBegin(mass, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+    ierr = MatAssemblyEnd(mass, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+    ierr = MatAssemblyBegin(stiff, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+    ierr = MatAssemblyEnd(stiff, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
+    
     /* print out mass matrix for verification */
-    // ierr = MatAssemblyBegin(mass, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-    // ierr = MatAssemblyEnd(mass, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
     // printf(YELLOW "\nGlobal Mass" RESET "\n");
     // ierr = MatView(mass, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
-    
-    // ierr = MatAssemblyBegin(stiff, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
-    // ierr = MatAssemblyEnd(stiff, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
     // printf(YELLOW "\nGlobal Stiff" RESET "\n");
     // ierr = MatView(stiff, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
 
-    // printf(YELLOW "\nGlobal RHSF" RESET "\n");
-    // ierr = VecView(rhsf, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+    /* add global mass and stiffness matrices */
+    ierr = MatAXPY(mass, 1.0, stiff, SAME_NONZERO_PATTERN); CHKERRQ(ierr);
+    // printf(YELLOW "\nGlobal Total" RESET "\n");
+    // ierr = MatView(mass, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
     // exit(-1);
 
     /* assign the boundary conditions */
+    if (selection == 0){ /* Dirichlet BCs */
+      const PetscInt rows[] = {0, N - 1};
+      const PetscScalar vals[] = { u(info.bounds[0]), u(info.bounds[1]) };
+      ierr = VecSetValues(soln, 2, rows, vals, INSERT_VALUES);
+      ierr = MatMult(mass, soln, rhsf_tmp); CHKERRQ(ierr);
+      ierr = VecAXPY(rhsf, -1.0, rhsf_tmp); CHKERRQ(ierr);
+      ierr = VecAssemblyBegin(rhsf); CHKERRQ(ierr);
+      ierr = VecAssemblyEnd(rhsf); CHKERRQ(ierr);
+    }
+    /* print out combined mass matrix with BCs */
+    // printf(YELLOW "\nGlobal Mass" RESET "\n");
+    // ierr = MatView(mass, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+    // printf(YELLOW "\nTotal RHSF" RESET "\n");
+    // ierr = VecView(rhsf, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+    // exit(-1);
+
     /* Do the linear algebra */
     /* clean up petsc stuff */
 

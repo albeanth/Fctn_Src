@@ -34,6 +34,7 @@ struct FEMGrid{
   std::vector< std::vector< int > > nod;
   std::vector< double > xnod;
   int nnodes;
+  std::vector<double> bounds;
 };
 
 struct EvalFEM1D{

@@ -27,7 +27,7 @@ class BVP : public TestFunction, public SetUpGrid{
     public:
         BVP(const int test_num, const bool hetero): TestFunction(test_num, hetero), SetUpGrid(){};
         // Public member variables
-        std::vector<double> soln;
+        std::vector<double> solution;
         // Public member functions
         PetscErrorCode CFEM_1D(int argc, char **args);
     private:
@@ -38,7 +38,8 @@ class BVP : public TestFunction, public SetUpGrid{
         PetscErrorCode ierr;
         // Global PETSc matrices (n x n)
         Mat stiff, mass;
-        Vec rhsf;
+        Vec rhsf, rhsf_tmp;
+        Vec soln;
         // Local PETSc matrices (ord x ord)
         Mat m,k;
         Vec f;

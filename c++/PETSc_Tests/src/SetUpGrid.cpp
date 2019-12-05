@@ -74,6 +74,7 @@ void SetUpGrid::add_CFEMGrid(const int nels, const int myorder, const std::vecto
   info.nod = nod;
   info.xnod = xnod;
   info.nnodes = nnodes;
+  info.bounds = Bnds;
 }
 
 void SetUpGrid::add_DFEMGrid(const int nels, const int myorder, const std::vector<double> &Bnds, const double delta){
