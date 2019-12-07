@@ -93,13 +93,13 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
             fval = MMS_Src(x);
             /* scale and add local FE matrices */
             ierr = VecScale(shape1d.psi, fval * qps1d.w[l1] * dx); CHKERRQ(ierr);
-            ierr = VecAXPY(f, 1.0, shape1d.psi); CHKERRQ(ierr);
+            ierr = VecAXPY(f, petsc_one, shape1d.psi); CHKERRQ(ierr);
 
             ierr = MatScale(dpsiMat, Dval * qps1d.w[l1] * dx); CHKERRQ(ierr);
-            ierr = MatAXPY(k, 1.0, dpsiMat, SAME_NONZERO_PATTERN); CHKERRQ(ierr);
+            ierr = MatAXPY(k, petsc_one, dpsiMat, SAME_NONZERO_PATTERN); CHKERRQ(ierr);
 
             ierr = MatScale(psiMat, SigAbs * qps1d.w[l1] * dx); CHKERRQ(ierr);
-            ierr = MatAXPY(m, 1.0, psiMat, SAME_NONZERO_PATTERN); CHKERRQ(ierr);
+            ierr = MatAXPY(m, petsc_one, psiMat, SAME_NONZERO_PATTERN); CHKERRQ(ierr);
         }
         /* assemble local FE matrices */
         ierr = MatAssemblyBegin(m, MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
@@ -135,10 +135,7 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
     // ierr = MatView(stiff, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
 
     /* add global mass and stiffness matrices */
-    ierr = MatAXPY(mass, 1.0, stiff, SAME_NONZERO_PATTERN); CHKERRQ(ierr);
-    // printf(YELLOW "\nGlobal Total" RESET "\n");
-    // ierr = MatView(mass, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
-    // exit(-1);
+    ierr = MatAXPY(mass, petsc_one, stiff, SAME_NONZERO_PATTERN); CHKERRQ(ierr);
 
     /* assign the boundary conditions */
     if (selection == 0){ /* Dirichlet BCs */
@@ -146,7 +143,7 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
       const PetscScalar vals[] = { u(info.bounds[0]), u(info.bounds[1]) };
       ierr = VecSetValues(soln, 2, rows, vals, INSERT_VALUES);
       ierr = MatMult(mass, soln, rhsf_tmp); CHKERRQ(ierr);
-      ierr = VecAXPY(rhsf, -1.0, rhsf_tmp); CHKERRQ(ierr);
+      ierr = VecAXPY(rhsf, -petsc_one, rhsf_tmp); CHKERRQ(ierr);
       ierr = VecAssemblyBegin(rhsf); CHKERRQ(ierr);
       ierr = VecAssemblyEnd(rhsf); CHKERRQ(ierr);
 
@@ -210,7 +207,7 @@ PetscErrorCode BVP::CheckNumericalSoln(){
     ierr = VecGetValues(soln, 1, &idx, &uh);
     ierr = PetscPrintf(PETSC_COMM_WORLD, "%.4e\t%.4e\n", double(val), double(uh));
   }
-  ierr = VecAYPX(ExactSoln, -1.0, soln); CHKERRQ(ierr);
+  ierr = VecAYPX(ExactSoln, -petsc_one, soln); CHKERRQ(ierr);
   ierr = VecNorm(ExactSoln, NORM_2, &norm); CHKERRQ(ierr);
   
   // ierr = KSPGetIterationNumber(ksp, &its); CHKERRQ(ierr);

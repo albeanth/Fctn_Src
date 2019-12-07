@@ -25,12 +25,17 @@ class BVP : public TestFunction, public SetUpGrid{
     or discontinuous Galerkin finite elements
     */
     public:
-        BVP(const int test_num, const bool hetero): TestFunction(test_num, hetero), SetUpGrid(){};
+        BVP(const int test_num, const bool hetero): TestFunction(test_num, hetero), SetUpGrid(){
+          petsc_one = 1.0;
+        };
         // Public member variables
         std::vector<double> solution;
         // Public member functions
         PetscErrorCode CFEM_1D(int argc, char **args);
     private:
+        // tmp dummy petsc variables.
+        PetscScalar petsc_one;
+        //
         PetscInt N, ord;
         PetscScalar *zero;
         PetscInt *i, *j, *ii, *jj;
