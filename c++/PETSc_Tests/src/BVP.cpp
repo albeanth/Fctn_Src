@@ -214,14 +214,14 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
       // ierr = VecView(soln, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
     }
     /* Check numerical solution */
-    ierr = CheckNumericalSoln(); CHKERRQ(ierr);
+    ierr = L2Error(); CHKERRQ(ierr);
 
     // all petsc based functions need to end with PetscFinalize()
     ierr = PetscFinalize();
     return ierr;
 }
 
-PetscErrorCode BVP::CheckNumericalSoln(){
+PetscErrorCode BVP::L2Error(){
   /* 
   Check numerical solution 
   */
@@ -233,11 +233,48 @@ PetscErrorCode BVP::CheckNumericalSoln(){
     ierr = VecGetValues(soln, 1, &idx, &uh);
     ierr = PetscPrintf(PETSC_COMM_WORLD, "%.4e\t%.4e\n", double(val), double(uh));
   }
-  ierr = VecAYPX(ExactSoln, -petsc_one, soln); CHKERRQ(ierr);
-  ierr = VecNorm(ExactSoln, NORM_2, &norm); CHKERRQ(ierr);
-  
-  // ierr = KSPGetIterationNumber(ksp, &its); CHKERRQ(ierr);
-  ierr = PetscPrintf(PETSC_COMM_WORLD, "Norm of error %g\n", (double)norm); CHKERRQ(ierr);
+  PetscScalar uval, duval;
+  PetscScalar uhval, duhval;
+  PetscInt mynum;
+  PetscScalar tmp_soln, tmp_b, tmp_bp;
+  l2Err = 0.0;
+  h1Err = 0.0;
+  QuadParams1D qps1d;
+  get1D_QPs(info.maxord, qps1d);
+  PetscShapeFunction1D shape1d;
+  double xL, xR, dx, x;
+  for (int elem = 0; elem < info.nels; elem ++){
+    xL = info.xnod[ info.nod[elem][0] ];
+    xR = info.xnod[ info.nod[elem][info.order[elem]-1] ];
+    dx = (xR-xL)/2.0;
+    for (int l1 = 0; l1 < qps1d.nw; l1++){
+      /* map from ref elem to real elem */
+      x = xL + (1.0 + qps1d.xw[l1]) * dx;
+      /* evaluate basis functions */
+      ierr = PetscEvalBasis1D(qps1d.xw[l1], info.order[elem], shape1d); CHKERRQ(ierr);
+      /* assign eval'd shape funcs to petsc matrices */
+      ierr = AssignEvaldBasis(dx, shape1d); CHKERRQ(ierr);
+      /* evaluate known functions */
+      uval = u(x);
+      duval = up(x);
+      uhval = 0.0;
+      duhval = 0.0;
+      for (int k = 0; k < ord; k++){
+        mynum = info.nod[elem][k];
+        ierr = VecGetValues(soln, 1, &mynum, &tmp_soln); CHKERRQ(ierr);
+        ierr = VecGetValues(shape1d.psi, 1, &k, &tmp_b); CHKERRQ(ierr);
+        ierr = VecGetValues(shape1d.dpsi, 1, &k, &tmp_bp); CHKERRQ(ierr);
+        uhval += tmp_soln * tmp_b;
+        duhval += tmp_soln * tmp_bp / dx;
+      }
+      l2Err += pow(uval - uhval, 2.0) * qps1d.w[l1] * dx;
+      h1Err += pow(duval - duhval, 2.0) * qps1d.w[l1] * dx;
+    }
+  }
+  l2Err = sqrt(l2Err);
+  h1Err = sqrt(l2Err + h1Err);
+  ierr = PetscPrintf(PETSC_COMM_WORLD, "L2 Norm of Error %g\n", (double)l2Err); CHKERRQ(ierr);
+  ierr = PetscPrintf(PETSC_COMM_WORLD, "H1 Norm of Error %g\n", (double)h1Err); CHKERRQ(ierr);
   return ierr;
 }
 

@@ -57,10 +57,11 @@ class BVP : public TestFunction, public SetUpGrid{
         PC pc;
         // exact solution for error checking
         Vec ExactSoln;
-        PetscReal norm;
+        PetscScalar l2Err;
+        PetscScalar h1Err;
 
         // Private member functions
-        PetscErrorCode CheckNumericalSoln();
+        PetscErrorCode L2Error();
         PetscErrorCode DoLinearAlgebra();
         PetscErrorCode AssignLocalToGlobal(const std::vector<int> &tmp);
         PetscErrorCode InitializeLocalMatrices();
