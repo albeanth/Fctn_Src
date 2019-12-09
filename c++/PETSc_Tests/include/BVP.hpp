@@ -57,9 +57,7 @@ class BVP : public TestFunction, public SetUpGrid{
         PC pc;
         // exact solution for error checking
         Vec ExactSoln;
-        Vec error;
         PetscReal norm;
-        PetscInt its;
 
         // Private member functions
         PetscErrorCode CheckNumericalSoln();
