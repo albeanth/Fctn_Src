@@ -135,7 +135,7 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
     // exit(-1);
 
     /* assign the boundary conditions */
-    if (selection == 0){ /* Dirichlet BCs */
+    if ((selection == 0) || (selection == 1)){ /* Dirichlet BCs */
       const PetscInt rows[] = {0, N - 1};
       const PetscScalar vals[] = { u(info.bounds[0]), u(info.bounds[1]) };
       ierr = VecSetValues(soln, ord, rows, vals, INSERT_VALUES);
@@ -226,13 +226,13 @@ PetscErrorCode BVP::L2Error(){
   Check numerical solution 
   */
   PetscScalar uh, val;
-  printf(YELLOW "Exact and Numerical Solution" RESET "\n");
-  for (PetscInt idx = 0; idx < N; idx++){
-    val = u(info.xnod[idx]);
-    ierr = VecSetValue(ExactSoln, idx, val, INSERT_VALUES); CHKERRQ(ierr);
-    ierr = VecGetValues(soln, 1, &idx, &uh);
-    ierr = PetscPrintf(PETSC_COMM_WORLD, "%.4e\t%.4e\n", double(val), double(uh));
-  }
+  // printf(YELLOW "Exact and Numerical Solution" RESET "\n");
+  // for (PetscInt idx = 0; idx < N; idx++){
+  //   val = u(info.xnod[idx]);
+  //   ierr = VecSetValue(ExactSoln, idx, val, INSERT_VALUES); CHKERRQ(ierr);
+  //   ierr = VecGetValues(soln, 1, &idx, &uh);
+  //   ierr = PetscPrintf(PETSC_COMM_WORLD, "%.4e\t%.4e\n", double(val), double(uh));
+  // }
   PetscScalar uval, duval;
   PetscScalar uhval, duhval;
   PetscInt mynum;
@@ -294,7 +294,7 @@ PetscErrorCode BVP::DoLinearAlgebra(){
   // set linear solver defaults for the problem
   ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
   ierr = PCSetType(pc, PCJACOBI); CHKERRQ(ierr);
-  ierr = KSPSetTolerances(ksp, 1e-5, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
+  ierr = KSPSetTolerances(ksp, 1e-12, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
   // set runtime options THESE WILL OVERRIDE THE ABOVE THREE COMMANDS
   ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
   

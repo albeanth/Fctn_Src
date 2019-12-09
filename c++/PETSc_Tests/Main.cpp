@@ -3,8 +3,8 @@
 #include <vector>
 
 int main(int argc,char **args){
-    const std::vector<int> NumOfElem {32};
-    const int selection {0};
+    const std::vector<int> NumOfElem {64};
+    const int selection {1};
     const bool hetero {false};
     const std::vector<double> Bnds {0.0, 1.0};
 
