@@ -9,7 +9,7 @@ void TestFunction::display_selection(){
         strcpy(help, "\nLinear Solution test, Dirichlet BCs left and right, ");
       } 
       else if (selection == 1) {
-        strcpy(help, "\nNonlinear Solution test, Dirichlet BCs left and right, ");
+        strcpy(help, "\nQuadratic Solution test, Dirichlet BCs left and right, ");
       } 
       else {
         throw std::invalid_argument("unknown problem selection");
