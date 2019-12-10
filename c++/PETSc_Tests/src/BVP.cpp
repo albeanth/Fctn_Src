@@ -5,12 +5,15 @@ PetscErrorCode BVP::CFEM_1D(int argc, char **args){
     1D CFEM solver uing PETSC ksp functionality
     */
     // PETSc initialization information
-    PetscInt n = 10;
     PetscMPIInt size;
     ierr = PetscInitialize(&argc, &args, (char *)0, help); CHKERRQ(ierr);
     ierr = MPI_Comm_size(PETSC_COMM_WORLD,&size);CHKERRQ(ierr);
     if (size != 1) SETERRQ(PETSC_COMM_WORLD,1,"This is a uniprocessor example only!");
-    ierr = PetscOptionsGetInt(NULL,NULL,"-n",&n,NULL);CHKERRQ(ierr);
+    /* the following two lines are examples of how to set a PetscInt
+     * and then overwrite it by passing something in at runtime
+     */
+    // PetscInt n = 10;
+    // ierr = PetscOptionsGetInt(NULL,NULL,"-n",&n,NULL);CHKERRQ(ierr);
 
     /* PETSc matrices and vector declarations */
     N = info.nnodes;
@@ -225,8 +228,8 @@ PetscErrorCode BVP::L2Error(){
   /* 
   Check numerical solution 
   */
-  PetscScalar uh, val;
   // printf(YELLOW "Exact and Numerical Solution" RESET "\n");
+  // PetscScalar uh, val;
   // for (PetscInt idx = 0; idx < N; idx++){
   //   val = u(info.xnod[idx]);
   //   ierr = VecSetValue(ExactSoln, idx, val, INSERT_VALUES); CHKERRQ(ierr);
