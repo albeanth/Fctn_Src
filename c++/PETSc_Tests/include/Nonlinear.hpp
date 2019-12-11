@@ -4,6 +4,7 @@
 
 // headers for dependents (what this class needs to function)
 #include "SetUpGrid.hpp"    // <- parent class
+#include "TestFunction.hpp" // <- parent class
 #include <petscsnes.h>
 #include <vector>
 
@@ -14,21 +15,18 @@
 #define GRAY "\x1b[37m"
 #define RESET "\x1b[0m"
 
-class NonLinear : public SetUpGrid{
+class NonLinear : public TestFunction, public SetUpGrid{
     /*
     uses petsc snes library to solve nonlinear differential equations
     */
     public:
-        NonLinear(){
-            strcpy(help, "\nNonlinear Solution test, Dirichlet BCs left and right, ");
-        };
+        NonLinear(const int test_num, const bool hetero): TestFunction(test_num, hetero), SetUpGrid(){};
         // Public Member Variables
         // Public Member Functions
         PetscErrorCode NL_1D(int argc, char **args);
     private:
         // Private Member Variables
         PetscErrorCode ierr;
-        char help[120];
         // Private Member Functions
 };
 
