@@ -1,4 +1,4 @@
-#include "Interp_Test.h"
+#include "Interp_Test.hpp"
 #include <iostream>
 
 int main(){
@@ -18,6 +18,7 @@ int main(){
   gsl_spline * MySpline = test.get_spline(size, flag);
   Approx = test.eval_spline(MySpline, ScatterData, size, 1);
   Integral = test.integrate_spline(MySpline, ScatterData, size);
+  gsl_spline_free(MySpline);
   printf("# Spline Approx.\n");
   for (int i=0; i<Approx.x.size(); i++){
     printf("%.5e % .5e % .5e\n",Approx.x[i],Approx.y[i],Approx.y_p[i]);

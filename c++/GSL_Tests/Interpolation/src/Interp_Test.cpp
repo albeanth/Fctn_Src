@@ -1,4 +1,4 @@
-#include "Interp_Test.h"
+#include "Interp_Test.hpp"
 
 Data InterpClass_Test::set_xy(const int size, std::vector<double> Bnds){
   Data mydata; // get struc instance of Data called mydata
@@ -38,6 +38,7 @@ Data InterpClass_Test::eval_spline(gsl_spline * MySpline, Data ScatterData, cons
       mydata.y_p.push_back(ypi);
     }
   }
+  gsl_interp_accel_free(acc);
   return mydata;
 }
 
@@ -46,7 +47,6 @@ double InterpClass_Test::integrate_spline(gsl_spline * MySpline, Data ScatterDat
   gsl_interp_accel *acc = gsl_interp_accel_alloc();
   printf("\n%.5e, %.5e\n",ScatterData.x[0], ScatterData.x[size-1]);
   integral = gsl_spline_eval_integ(MySpline, ScatterData.x[0], ScatterData.x[size-1], acc);
-  gsl_spline_free (MySpline);
   gsl_interp_accel_free (acc);
   return integral;
 }

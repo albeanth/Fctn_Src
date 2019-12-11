@@ -28,6 +28,7 @@ FEMInt.py
 README~
 *.out
 *.o
+MatrixTest.cpp
 
 # debugging
 *.dSYM/
