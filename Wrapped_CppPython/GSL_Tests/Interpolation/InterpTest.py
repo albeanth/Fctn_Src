@@ -641,6 +641,32 @@ class Data(_object):
 Data_swigregister = _InterpTest.Data_swigregister
 Data_swigregister(Data)
 
+class Test(_object):
+    __swig_setmethods__ = {}
+    __setattr__ = lambda self, name, value: _swig_setattr(self, Test, name, value)
+    __swig_getmethods__ = {}
+    __getattr__ = lambda self, name: _swig_getattr(self, Test, name)
+    __repr__ = _swig_repr
+    __swig_setmethods__["size"] = _InterpTest.Test_size_set
+    __swig_getmethods__["size"] = _InterpTest.Test_size_get
+    if _newclass:
+        size = _swig_property(_InterpTest.Test_size_get, _InterpTest.Test_size_set)
+    __swig_setmethods__["method"] = _InterpTest.Test_method_set
+    __swig_getmethods__["method"] = _InterpTest.Test_method_get
+    if _newclass:
+        method = _swig_property(_InterpTest.Test_method_get, _InterpTest.Test_method_set)
+
+    def __init__(self):
+        this = _InterpTest.new_Test()
+        try:
+            self.this.append(this)
+        except __builtin__.Exception:
+            self.this = this
+    __swig_destroy__ = _InterpTest.delete_Test
+    __del__ = lambda self: None
+Test_swigregister = _InterpTest.Test_swigregister
+Test_swigregister(Test)
+
 class InterpClass_Test(_object):
     __swig_setmethods__ = {}
     __setattr__ = lambda self, name, value: _swig_setattr(self, InterpClass_Test, name, value)
@@ -651,8 +677,8 @@ class InterpClass_Test(_object):
     def set_xy(self, size, Bnds):
         return _InterpTest.InterpClass_Test_set_xy(self, size, Bnds)
 
-    def get_spline(self, size, method):
-        return _InterpTest.InterpClass_Test_get_spline(self, size, method)
+    def get_spline(self, mydata):
+        return _InterpTest.InterpClass_Test_get_spline(self, mydata)
 
     def eval_spline(self, MySpline, ScatterData, size, flag):
         return _InterpTest.InterpClass_Test_eval_spline(self, MySpline, ScatterData, size, flag)

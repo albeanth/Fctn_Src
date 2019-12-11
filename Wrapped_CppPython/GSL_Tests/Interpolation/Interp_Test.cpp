@@ -10,18 +10,21 @@ Data InterpClass_Test::set_xy(const int size, std::vector<double> Bnds){
   return mydata;
 }
 
-gsl_spline* InterpClass_Test::get_spline(const int size, std::string method){
+gsl_spline* InterpClass_Test::get_spline(Test mydata){//const int size, std::string method){
+  // Test * values = static_cast<Test*>(mydata);
+  std::string dummy1 = mydata.method;
+  int dummy2 = mydata.size;
   const gsl_interp_type * Type;
-  if (method.compare("cspline") == 0){
+  if (dummy1.compare("cspline") == 0){
     Type = gsl_interp_cspline;
   }
-  else if (method.compare("steffen") == 0){
+  else if (dummy1.compare("steffen") == 0){
     Type = gsl_interp_steffen;
   }
   else{
     throw std::invalid_argument("\n\nplease use cspline or steffen for interpolation type\n");
   }
-  return gsl_spline_alloc(Type, size);
+  return gsl_spline_alloc(Type, dummy2);
 }
 
 Data InterpClass_Test::eval_spline(gsl_spline * MySpline, Data ScatterData, const int size, int flag){

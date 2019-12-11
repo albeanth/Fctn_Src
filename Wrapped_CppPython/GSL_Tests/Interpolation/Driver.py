@@ -3,14 +3,20 @@ from numpy import array
 from math import pi
 import InterpTest
 
+class Test():
+    def __init__(self, size, method):
+        self.size = size
+        self.method = method
+
 PyObj = InterpTest.InterpClass_Test()
 TBnds = InterpTest.LineDouble()
 TBnds = array([0,pi])
 size = 10
 
-ScatterData = PyObj.set_xy(10, TBnds)
 method = "cspline"
-MySpline = PyObj.get_spline(size,method)
+dummy = Test(size,method)
+ScatterData = PyObj.set_xy(size, TBnds)
+MySpline = PyObj.get_spline(dummy)
 MyData = PyObj.eval_spline(MySpline, ScatterData, size, 1)
 IntVal = PyObj.integrate_spline(MySpline, ScatterData, size)
 
