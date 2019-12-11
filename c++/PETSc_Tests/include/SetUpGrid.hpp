@@ -17,12 +17,14 @@ class SetUpGrid : public UtilityFunctions{
       6) nnodes = notal number of nodes
   */
   public:
-    SetUpGrid(){}; // empty constructor
+    SetUpGrid(const std::vector<double> &Bnds){
+      info.bounds = Bnds;
+    };
     // Member variables
     FEMGrid info;
     // Member Functions
-    void add_CFEMGrid(const int nels, const int myorder, const std::vector<double> &Bnds);
-    void add_DFEMGrid(const int nels, const int myorder, const std::vector<double> &Bnds, const double delta = std::numeric_limits<double>::epsilon());
+    void add_CFEMGrid(const int nels, const int myorder);
+    void add_DFEMGrid(const int nels, const int myorder, const double delta = std::numeric_limits<double>::epsilon());
 };
 
 #endif

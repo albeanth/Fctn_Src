@@ -18,14 +18,14 @@ int main(int argc,char **args){
     if (selection < 100){
         std::vector<double> L2Error (NumOfElem.size(), 0.0);
         std::vector<double> H1Error (NumOfElem.size(), 0.0);
-        BVP CFEM(selection, hetero);
+        BVP CFEM(selection, hetero, Bnds);
         for (int i=0; i<NumOfElem.size(); i++){
-            CFEM.add_CFEMGrid(NumOfElem[i], 1, Bnds);
+            CFEM.add_CFEMGrid(NumOfElem[i], 1);
             CFEM.CFEM_1D(argc, args);
         }
     }
     else{
-        NonLinear NLTest(selection, hetero);
+        NonLinear NLTest(selection, hetero, Bnds);
         NLTest.NL_1D(argc, args);
     }
 

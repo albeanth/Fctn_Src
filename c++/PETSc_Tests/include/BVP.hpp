@@ -25,7 +25,9 @@ class BVP : public TestFunction, public SetUpGrid{
     or discontinuous Galerkin finite elements
     */
     public:
-        BVP(const int test_num, const bool hetero): TestFunction(test_num, hetero), SetUpGrid(){
+        BVP(const int test_num, const bool hetero, const std::vector<double> &Bnds)
+        : TestFunction(test_num, hetero), SetUpGrid(Bnds)
+        {
           petsc_one = 1.0;
         };
         // Public member variables
