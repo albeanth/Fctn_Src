@@ -10,7 +10,7 @@ build/
 *.so
 *.pyc
 
-# latex,
+# latex
 *.aux
 *.log
 *.synctex.gz
@@ -19,8 +19,6 @@ build/
 
 # In FEM_Integration_Test
 test
-
-# In FEM_Integration_Test
 FEMInt.py
 
 # in c++ GSL tests
@@ -32,3 +30,8 @@ MatrixTest.cpp
 
 # debugging
 *.dSYM/
+
+# in python FEM implementation
+CFEM-DFEM-Ringing-Tests-2/
+CFEM-DFEM-Ringing-Tests/
+DFEM-ConvergenceTests/
