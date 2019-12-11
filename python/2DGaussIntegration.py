@@ -2,9 +2,9 @@ import sys
 import os
 import math
 import numpy as np
-sys.path.append('./FEM_test/')
+sys.path.append('./FEM/src/')
 import QuadParams
-import shape
+import ShapeFuncs
 
 
 class function(object):
