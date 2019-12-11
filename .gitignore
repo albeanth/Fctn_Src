@@ -26,5 +26,8 @@ FEMInt.py
 # in c++ GSL tests
 *.*~
 README~
-data.out
-a.out
+*.out
+*.o
+
+# debugging
+*.dSYM/
