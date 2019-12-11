@@ -191,7 +191,7 @@ class BVP_Solvers(mesh, func):
             subtract(self.rhsf, dot(mat, self.soln), out=self.rhsf) # used for non-zero Dirichlet BCs
             self.soln[1:] = linalg.solve(mat[1:, 1:], self.rhsf[1:])
         else:
-        self.soln = linalg.solve(mat, self.rhsf)
+            self.soln = linalg.solve(mat, self.rhsf)
 
     def mass_lump(self, m):
         [row, col] = m.shape
@@ -328,6 +328,35 @@ class BVP_Solvers(mesh, func):
         # print("  -> Computing Local Error at x={0:.4e}".format(x))
         # print("      uval, uhval = {0:.4e}, {1:.4e}".format(uval, uhval))
         self.loc_err = abs(uval - uhval)
+
+    def Plot_Single(self, NumPts=10):
+        """
+        plots CFEM solution to BVP (red) with analytic MMS solution (blue)
+        """
+        plt.figure(1)
+        # xplot = linspace(self.bounds[0], self.bounds[1], 100)
+        # plt.plot(xplot, self.u(xplot), linewidth = 2, color = 'blue')
+
+        for el in range(0, self.nels):
+            xL = self.xnod[self.nod[el, 0]]
+            xR = self.xnod[self.nod[el, self.order[el]-1]]
+            dx = (xR - xL)/2.0
+            xpp = linspace(xL, xR, NumPts)
+            xww = (xpp-xL)/dx - 1.0
+            ypp = zeros(NumPts)
+            for j in range(0, NumPts):
+                psi, dpsi = shape(xww[j], self.order[el])
+                uhval = 0.0
+                for k in range(0, self.order[el]):
+                    mynum = self.nod[el, k]
+                    uhval += self.soln[mynum]*psi[k]
+                ypp[j] = uhval
+
+            plt.plot(xpp,ypp, ".-",linewidth=1, color = 'red')
+        
+        plt.xlabel('Space')
+        plt.grid(True)
+        plt.show()
     
     def Plot_Both(self, NumPts=10, string="CFEM"):
         """

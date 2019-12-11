@@ -36,10 +36,17 @@ class func:
             print("\nDirichlet left, reflecting right ",end="")
         elif self.selection == 7:
             print("\nNumerical ringing test ",end="\n")
+        else:
+            print("\nunknown problem selection!\n")
+            exit(-1)
+        
         if self.hetero == False:
             print("with homogeneous cross sections.",end="\n\n")
         elif self.hetero == True:
             print("with smooth heterogeneous cross sections.",end="\n\n")
+        else:
+            print("\nunknown heterogeneity selection!\n")
+            exit(-1)
 
     def u(self, x):
         """
@@ -62,9 +69,6 @@ class func:
                 val = -(x-1.0)**3 + 1.0 # -x + 2.0
         elif self.selection == 6:
             val = cos(x-pi/2)+1.0
-        else:
-            print("def u(self,x): unknown problem selection!")
-            exit(-1)
         return val
 
     def up(self, x):
@@ -88,9 +92,6 @@ class func:
                 val = -3.0*(x-1.0)**2 #-1.0
         elif self.selection == 6:
             val = cos(x)
-        else:
-            print("def up(self, x): unknown problem selection!")
-            exit(-1)
         return val
 
     def upp(self, x):
@@ -114,9 +115,6 @@ class func:
                 val = -6*(x-1.0)  # 0.0
         elif self.selection == 6:
             val = -sin(x)
-        else:
-            print("def upp(self, x): unknown problem selection!")
-            exit(-1)
         return val
 
     def SigA(self, x):
@@ -140,9 +138,6 @@ class func:
         #         val = 1.0E10
         #     else:
         #         val = 1.0E10
-        else:
-            print("def SigA(self, x): unknown heterogeneity selection!")
-            exit(-1)
         return val
 
     def D(self, x):
@@ -180,7 +175,4 @@ class func:
                 val = 1.0E-1
             else:
                 val = 1.0E-1
-        else:
-            print("def f(self, x): unknown problem selection!")
-            exit(-1)
         return val
