@@ -12,7 +12,7 @@ void SetUpGrid::add_CFEMGrid(const int nels, const int myorder) {
    *   OUTPUT:
    *     mesh object with necessary attributes
    */
-  printf("\nSetting up CFEM grid\n");
+  printf("\nSetting up CFEM grid... ");
   info.nels = nels;
   double hel {(info.bounds[1]-info.bounds[0])/info.nels}; // spacing of elements (uniform)
   std::vector<double> xel {arange(info.bounds[0], info.bounds[1], hel)};
@@ -67,6 +67,7 @@ void SetUpGrid::add_CFEMGrid(const int nels, const int myorder) {
   // for (double elem : info.xnod){
   //   printf("%.4f\n", elem);
   // }
+  printf("done!\n\n");
 
 }
 
@@ -84,7 +85,7 @@ void SetUpGrid::add_DFEMGrid(const int nels, const int myorder, const double del
    *   OUTPUT:
    *     mesh object with necessary attributes
    */
-  printf("\nSetting up DFEM grid\n");
+  printf("\nSetting up DFEM grid... ");
   
   info.nels = nels;
   const double hel {(info.bounds[1]-info.bounds[0])/info.nels}; // spacing of elements (uniform)
@@ -145,6 +146,6 @@ void SetUpGrid::add_DFEMGrid(const int nels, const int myorder, const double del
   //   printf("    %.4e\n", elem);
   // }
   // exit(-1);
-
+  printf("done!\n\n");
 }
 
