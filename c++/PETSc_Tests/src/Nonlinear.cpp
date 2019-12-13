@@ -29,9 +29,7 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
     double xL, xR, dx, x;
     ctx.mass_src = new PetscScalar[info.order[0]];
     ctx.momen_src = new PetscScalar[info.order[0]];
-    ctx.mass_upwind = new PetscScalar[info.order[0]];
-    ctx.momen_upwind = new PetscScalar[info.order[0]];
-
+    PetscScalar tmp_vel, tmp_rho;
     /* Sweep over elements and solve */
     PetscPrintf(PETSC_COMM_WORLD, "idx\tVelocity\tDensity\n");
     for (int elem = 0; elem < info.nels; elem ++){
@@ -45,12 +43,20 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
             /* evaluate known functions */
             ctx.mass_src[l1] = MMS_Src_Mass(x);
             ctx.momen_src[l1] = MMS_Src_Momentum(x);
-            if (l1 == 0) {
-              index = elem - 1 + info.order[0];
-              VecGetValues(velocity, 1, &index, &ctx.mass_upwind[l1]);
-              VecGetValues(density, 1, &index, &ctx.momen_upwind[l1]);
+            if ((elem == 0) && (l1 == 0)){
+                ctx.mass_upwind = u(info.bounds[0]) * rho(info.bounds[0]);
+                ctx.momen_upwind = rho(info.bounds[0])*pow(u(info.bounds[0]), 2.0);
+            }
+            else if (l1 == 0){
+                VecGetValues(velocity, 1, &index, &tmp_vel);
+                VecGetValues(density, 1, &index, &tmp_rho);
+                ctx.mass_upwind = tmp_vel * tmp_rho;
+                ctx.momen_upwind = tmp_rho * pow(tmp_vel, 2.0);
             }
         }
+        // printf("  ctx.mass_upwind = %.3f\n", ctx.mass_upwind);
+        // printf("  ctx.momen_upwind = %.3f\n", ctx.momen_upwind);
+        // exit(-1);
         ierr = NLSolve(elem); CHKERRQ(ierr);
     }
 
@@ -85,10 +91,13 @@ PetscErrorCode NonLinear::NLSolve(const int elem){
      *   KSP and PC contexts from the SNES context, we can then
      *   directly call any KSP and PC routines to set various options.
      */
+    // set linear solver defaults for the problem
     ierr = SNESGetKSP(snes,&ksp);CHKERRQ(ierr);
-    ierr = KSPGetPC(ksp,&pc);CHKERRQ(ierr);
-    ierr = PCSetType(pc,PCNONE);CHKERRQ(ierr);
-    ierr = KSPSetTolerances(ksp,1.e-9,PETSC_DEFAULT,PETSC_DEFAULT,20);CHKERRQ(ierr);
+    ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
+    ierr = PCSetType(pc, PCJACOBI); CHKERRQ(ierr);
+    ierr = KSPSetTolerances(ksp, 1e-12, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
+    // set runtime options THESE WILL OVERRIDE THE ABOVE THREE COMMANDS
+    ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
 
     /*
      *   Set SNES/KSP/KSP/PC runtime options, e.g.,
@@ -104,7 +113,7 @@ PetscErrorCode NonLinear::NLSolve(const int elem){
 
     /* Solve nonlinear system */
     ierr = SNESSolve(snes, NULL, x); CHKERRQ(ierr);
-    // ierr = VecView(x, PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+    ierr = SNESView(snes, PETSC_VIEWER_STDOUT_WORLD);
 
     /* Map solution to global solution */
     PetscScalar value[4];         // array of values computed from NL solve
@@ -117,6 +126,7 @@ PetscErrorCode NonLinear::NLSolve(const int elem){
     ierr = VecSetValue(density, el+1, value[3], INSERT_VALUES); CHKERRQ(ierr);
     PetscPrintf(PETSC_COMM_WORLD, "%d\t% .4e\t% .4e\n", el, value[0], value[2]);
     PetscPrintf(PETSC_COMM_WORLD, "%d\t% .4e\t% .4e\n", el+1, value[1], value[3]);
+    exit(-1);
 
     /* Free work space. */
     ierr = SNESDestroy(&snes); CHKERRQ(ierr);
@@ -139,12 +149,13 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     const PetscScalar *xx;
     PetscScalar       *ff;
 
-    // printf("  user->mass_upwind[0] = %.3e\n", user->mass_upwind[0]);
+    // printf("  user->mass_upwind = %.3e\n", user->mass_upwind);
     // printf("  user->mass_src[0] = %.3e\n", user->mass_src[0]);
     // printf("  user->mass_src[1] = %.3e\n", user->mass_src[1]);
-    // printf("  user->momen_upwind[0] = %.3e\n", user->momen_upwind[0]);
+    // printf("  user->momen_upwind = %.3e\n", user->momen_upwind);
     // printf("  user->momen_src[0] = %.3e\n", user->momen_src[0]);
     // printf("  user->momen_src[1] = %.3e\n", user->momen_src[1]);
+    // exit(-1);
 
     /*
     Get pointers to vector data.
@@ -157,9 +168,9 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     ierr = VecGetArray(f,&ff);CHKERRQ(ierr);
 
     /* Compute function */
-    ff[0] = (xx[0]*xx[2])/3.0 + (xx[0]*xx[3])/6.0 + (xx[1]*xx[2])/6.0 + (xx[1]*xx[3])/3.0 - user->mass_upwind[0] - user->mass_src[0];
+    ff[0] = (xx[0]*xx[2])/3.0 + (xx[0]*xx[3])/6.0 + (xx[1]*xx[2])/6.0 + (xx[1]*xx[3])/3.0 - user->mass_upwind - user->mass_src[0];
     ff[1] =-(xx[0]*xx[2])/3.0 - (xx[0]*xx[3])/6.0 - (xx[1]*xx[2])/6.0 - (xx[1]*xx[3])/3.0 + xx[1]*xx[3] - user->mass_src[1];
-    ff[2] = (xx[2]*pow(xx[0],2.0))/4.0 + (xx[3]*pow(xx[0],2.0))/12.0 + (xx[2]*xx[0]*xx[1])/6.0 + (xx[3]*xx[0]*xx[1])/6.0 + (xx[2]*pow(xx[1],2.0))/12.0 + (xx[3]*pow(xx[1],2.0))/4.0 - user->momen_upwind[0] - user->momen_src[0];
+    ff[2] = (xx[2]*pow(xx[0],2.0))/4.0 + (xx[3]*pow(xx[0],2.0))/12.0 + (xx[2]*xx[0]*xx[1])/6.0 + (xx[3]*xx[0]*xx[1])/6.0 + (xx[2]*pow(xx[1],2.0))/12.0 + (xx[3]*pow(xx[1],2.0))/4.0 - user->momen_upwind - user->momen_src[0];
     ff[3] =-(xx[2]*pow(xx[0],2.0))/4.0 - (xx[3]*pow(xx[0],2.0))/12.0 - (xx[2]*xx[0]*xx[1])/6.0 - (xx[3]*xx[0]*xx[1])/6.0 - (xx[2]*pow(xx[1],2.0))/12.0 - (xx[3]*pow(xx[1],2.0))/4.0 + xx[3]*pow(xx[1],2.0) - user->momen_src[1];
 
     /* Restore vectors */
@@ -182,22 +193,22 @@ PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *dummy) {
     ierr = VecGetArrayRead(x,&xx);CHKERRQ(ierr);
 
     /* Compute Jacobian entries */
-    // over f1
+    // over f0
     A[0] = xx[2]/3.0 + xx[3]/6.0;
     A[1] = xx[2]/6.0 + xx[3]/3.0;
     A[2] = xx[0]/3.0 + xx[1]/6.0;
     A[3] = xx[0]/6.0 + xx[1]/3.0;
-    // over f2
+    // over f1
     A[4] = -A[0];         //-xx[2]/3.0 - xx[3]/6.0;
     A[5] = -A[1] + xx[3]; //-xx[2]/6.0 - xx[3]/3.0 + xx[3];
     A[6] = -A[2];         //-xx[0]/3.0 - xx[1]/6.0;
     A[7] = -A[3] + xx[1]; //-xx[0]/6.0 - xx[1]/3.0 + xx[1];
-    // over f3
+    // over f2
     A[8] = (2.0*xx[0]*xx[2])/4.0 + (2.0*xx[0]*xx[3])/12.0 + (xx[2]*xx[1])/6.0 + (xx[3]*xx[1])/6.0;
     A[9] = (2.0*xx[1]*xx[3])/4.0 + (2.0*xx[1]*xx[2])/12.0 + (xx[3]*xx[0])/6.0 + (xx[2]*xx[0])/6.0;
     A[10] = pow(xx[0], 2.0)/4.0 + (xx[0]*xx[1])/6.0 + pow(xx[1],2.0)/12.0;
     A[11] = pow(xx[0], 2.0)/12.0 + (xx[0]*xx[1])/6.0 + pow(xx[1], 2.0)/4.0;
-    // over f4
+    // over f3
     A[12] = -A[8];                     //-(2.0*xx[0]*xx[2])/4.0 - (2.0*xx[0]*xx[3])/12.0 - (xx[2]*xx[1])/6.0 - (xx[3]*xx[1])/6.0;
     A[13] = -A[9] + 2.0*xx[1]*xx[3] ;  //-(2.0*xx[1]*xx[3])/4.0 - (2.0*xx[1]*xx[2])/12.0 - (xx[3]*xx[0])/6.0 - (xx[2]*xx[0])/6.0 + 2.0*xx[1]*xx[3];
     A[14] = -A[10];                    //-pow(xx[0], 2.0)/4.0 - (xx[0]*xx[1])/6.0 - pow(xx[0],2.0)/12.0;

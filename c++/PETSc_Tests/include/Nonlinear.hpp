@@ -20,8 +20,8 @@
 struct ApplicationCTX{
     PetscScalar *mass_src;      /* mms source for cons. of mass */
     PetscScalar *momen_src;     /* mms source for cons. of momentum */
-    PetscScalar *mass_upwind;   /* upwind source for cons. of mass */
-    PetscScalar *momen_upwind;  /* upwind source for cons. of momentum */
+    PetscScalar mass_upwind;   /* upwind source for cons. of mass */
+    PetscScalar momen_upwind;  /* upwind source for cons. of momentum */
 };
 
 // function declarations for nonlinear function and jacobian forms
