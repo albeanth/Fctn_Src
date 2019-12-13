@@ -4,7 +4,7 @@
 #include <vector>
 
 int main(int argc,char **args){
-    const std::vector<int> NumOfElem {64};
+    const std::vector<int> NumOfElem {32};
     /*
      * test #'s < 100
      *   CFEM using petsc ksp libary tests
@@ -26,7 +26,10 @@ int main(int argc,char **args){
     }
     else{
         NonLinear NLTest(selection, hetero, Bnds);
-        NLTest.NL_1D(argc, args);
+        for (int i = 0; i < NumOfElem.size(); i++) {
+            NLTest.add_DFEMGrid(NumOfElem[i], 1);
+            NLTest.NL_1D(argc, args);
+        }
     }
 
     return 0;

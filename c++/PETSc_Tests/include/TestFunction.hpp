@@ -43,6 +43,7 @@ class TestFunction{
             double rho(const double x);
             double rhop(const double x);
             double pressure(const double x);
+            double pressurep(const double x);
             // cross sections for neutron diffusion
             double SigA(const double x);
             double D(const double x);

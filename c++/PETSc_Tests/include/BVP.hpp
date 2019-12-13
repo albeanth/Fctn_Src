@@ -3,6 +3,7 @@
 #define __BVP_H_INCLUDED__
 
 // headers for dependents (what this class needs to function)
+#include "PetscFEFuncs.hpp" // <- parent class
 #include "SetUpGrid.hpp"    // <- parent class
 #include "TestFunction.hpp" // <- parent class
 #include <petscksp.h>
@@ -15,18 +16,14 @@
 #define GRAY "\x1b[37m"
 #define RESET "\x1b[0m"
 
-struct PetscShapeFunction1D {
-  Vec psi, dpsi;
-};
-
-class BVP : public TestFunction, public SetUpGrid{
+class BVP : public TestFunction, public SetUpGrid, public PetscFEFuncs{
     /*
     solves a two-point boundary value problem (BVP) using continuous
     or discontinuous Galerkin finite elements
     */
     public:
         BVP(const int test_num, const bool hetero, const std::vector<double> &Bnds)
-        : TestFunction(test_num, hetero), SetUpGrid(Bnds)
+        : TestFunction(test_num, hetero), SetUpGrid(Bnds), PetscFEFuncs()
         {
           petsc_one = 1.0;
         };
@@ -68,7 +65,6 @@ class BVP : public TestFunction, public SetUpGrid{
         PetscErrorCode AssignLocalToGlobal(const std::vector<int> &tmp);
         PetscErrorCode InitializeLocalMatrices();
         PetscErrorCode AssignEvaldBasis(const double dx, const PetscShapeFunction1D &shape1d);
-        PetscErrorCode PetscEvalBasis1D(const double x, const int n, PetscShapeFunction1D &shape);
 };
 
 #endif

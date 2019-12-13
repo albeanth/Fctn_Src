@@ -43,7 +43,7 @@ double TestFunction::u(const double x){
         val = pow(x,2) - x + 1.0;
     }
     else if (selection == 100){
-        val = 1.0 - x;
+        val = 2.0 - x;
     }
     return val;
 }
@@ -85,7 +85,7 @@ double TestFunction::rho(const double x){
   */
   double val{NAN};
   if (selection == 100){
-    val = 1 + x;
+    val = 1.0 + x;
   }
   return val;
 }
@@ -96,7 +96,7 @@ double TestFunction::rhop(const double x) {
   */
   double val{NAN};
   if (selection == 100) {
-    val = 1 + x;
+    val = 1.0;
   }
   return val;
 }
@@ -107,7 +107,18 @@ double TestFunction::pressure(const double x){
   */
   double val{NAN};
   if (selection == 100){
-    val = 1 + x;
+    val = 1.0 + x;
+  }
+  return val;
+}
+
+double TestFunction::pressurep(const double x){
+  /*
+  first derivatice of fluid pressure
+  */
+  double val{NAN};
+  if (selection == 100){
+    val = 1.0;
   }
   return val;
 }
@@ -168,5 +179,5 @@ double TestFunction::MMS_Src_Momentum(const double x){
      * source to define the MMS problem for 
      * the conservation of momentum
      */
-    return rho(x) * 2.0 * u(x) * up(x) + rhop(x) * pow(u(x), 2.0);
+    return rho(x) * 2.0 * u(x) * up(x) + rhop(x) * pow(u(x), 2.0);//- pressurep(x);
 }
