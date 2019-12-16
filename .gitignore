@@ -35,3 +35,6 @@ MatrixTest.cpp
 CFEM-DFEM-Ringing-Tests-2/
 CFEM-DFEM-Ringing-Tests/
 DFEM-ConvergenceTests/
+
+# excel tmp files
+~$*.xlsx

@@ -18,8 +18,8 @@
 
 // strcut definitions
 struct ApplicationCTX{
-    PetscScalar *mass_src;      /* mms source for cons. of mass */
-    PetscScalar *momen_src;     /* mms source for cons. of momentum */
+    Vec mass_src;      /* mms source for cons. of mass */
+    Vec momen_src;     /* mms source for cons. of momentum */
     PetscScalar mass_upwind;   /* upwind source for cons. of mass */
     PetscScalar momen_upwind;  /* upwind source for cons. of momentum */
 };
@@ -52,6 +52,7 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         PC pc;                  /* preconditioner context */
         // Private Member Functions
         PetscErrorCode NLSolve(const int elem);
+        PetscErrorCode InitializeLocalRHSF();
 };
 
 #endif
