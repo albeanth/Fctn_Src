@@ -101,19 +101,17 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
             ierr = VecAXPY(ctx.mass_src, 1.0, shape1d.psi); CHKERRQ(ierr);
             ierr = VecAXPY(ctx.momen_src, 1.0, TmpEvaldShape); CHKERRQ(ierr);
             if ((elem == 0) && (l1 == 0)){
-                ctx.mass_upwind = u(info.bounds[0]) * rho(info.bounds[0]);
-                ctx.momen_upwind = rho(info.bounds[0])*pow(u(info.bounds[0]), 2.0);
+                tmp_vel = u(info.bounds[0]);
+                tmp_rho = rho(info.bounds[0]);
             }
             else if (l1 == 0){
                 index = elem * info.order[elem] - 1;
                 VecGetValues(velocity, 1, &index, &tmp_vel);
                 VecGetValues(density, 1, &index, &tmp_rho);
-                ctx.mass_upwind = tmp_vel * tmp_rho;
-                ctx.momen_upwind = tmp_rho * pow(tmp_vel, 2.0);
             }
+            ctx.mass_upwind = tmp_vel * tmp_rho;
+            ctx.momen_upwind = tmp_rho * pow(tmp_vel, 2.0);
         }
-        // printf("  ctx.mass_upwind = %.3f\n", ctx.mass_upwind);
-        // printf("  ctx.momen_upwind = %.3f\n", ctx.momen_upwind);
         // exit(-1);
         ierr = NLSolve(elem); CHKERRQ(ierr);
         // set vector entries equal to zero (while maintaining structure)
