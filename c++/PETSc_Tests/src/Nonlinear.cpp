@@ -26,6 +26,10 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
      *   routines.
      */
     ierr = SNESSetFromOptions(snes); CHKERRQ(ierr);
+    // set function evaluation routing and vector
+    ierr = SNESSetFunction(snes, r, FormFunction, &ctx); CHKERRQ(ierr);
+    // set Jacobian matrix data strcuture and evaluation routine
+    ierr = SNESSetJacobian(snes, J, J, FormJacobian, NULL);CHKERRQ(ierr);
     // create Jacobian matrix data structure
     ierr = MatCreate(PETSC_COMM_WORLD,&J);CHKERRQ(ierr);
     ierr = MatSetSizes(J,PETSC_DECIDE,PETSC_DECIDE,4,4);CHKERRQ(ierr);
@@ -100,21 +104,25 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
             ierr = VecScale(TmpEvaldShape, src_momen * qps1d.w[l1] * dx); CHKERRQ(ierr);
             ierr = VecAXPY(ctx.mass_src, 1.0, shape1d.psi); CHKERRQ(ierr);
             ierr = VecAXPY(ctx.momen_src, 1.0, TmpEvaldShape); CHKERRQ(ierr);
-            if ((elem == 0) && (l1 == 0)){
-                tmp_vel = u(info.bounds[0]);
-                tmp_rho = rho(info.bounds[0]);
-            }
-            else if (l1 == 0){
-                index = elem * info.order[elem] - 1;
-                VecGetValues(velocity, 1, &index, &tmp_vel);
-                VecGetValues(density, 1, &index, &tmp_rho);
-            }
-            ctx.mass_upwind = tmp_vel * tmp_rho;
-            ctx.momen_upwind = tmp_rho * pow(tmp_vel, 2.0);
         }
-        // exit(-1);
+        /* get upwind info */
+        if (elem == 0) { // use BC info
+          tmp_vel = u(info.bounds[0]);
+          tmp_rho = rho(info.bounds[0]);
+        } 
+        else { // use previous element info
+          index = elem * info.order[elem] - 1;
+          VecGetValues(velocity, 1, &index, &tmp_vel);
+          VecGetValues(density, 1, &index, &tmp_rho);
+        }
+        // compute upwind values for mass and momentum
+        ctx.mass_upwind = tmp_vel * tmp_rho;
+        ctx.momen_upwind = tmp_rho * pow(tmp_vel, 2.0);
+        
+        /* Solve nonlinear system of equations over elem */
         ierr = NLSolve(elem); CHKERRQ(ierr);
-        // set vector entries equal to zero (while maintaining structure)
+        
+        /* set vector entries equal to zero (while maintaining structure) */
         ierr = InitializeLocalRHSF(); CHKERRQ(ierr);
     }
     /* print global solution */
@@ -145,12 +153,7 @@ PetscErrorCode NonLinear::NLSolve(const int elem){
     /*
      *  create nonlinear solver context and solve equations
      */
-    // set function evaluation routing and vector
-    ierr = SNESSetFunction(snes, r, FormFunction, &ctx); CHKERRQ(ierr);
-    // set Jacobian matrix data strcuture and evaluation routine
-    ierr = SNESSetJacobian(snes, J, J, FormJacobian, NULL);CHKERRQ(ierr);
-
-    /* Evaluated initial guess, then solve nonlinear system */
+    /* Set initial guess */
     ierr = VecSet(x, 1.0);CHKERRQ(ierr);
 
     /* Solve nonlinear system */
