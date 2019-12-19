@@ -30,7 +30,6 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
     ierr = MatSetSizes(J,PETSC_DECIDE,PETSC_DECIDE,4,4);CHKERRQ(ierr);
     ierr = MatSetFromOptions(J);CHKERRQ(ierr);
     ierr = MatSetUp(J);CHKERRQ(ierr);
-    ierr = SNESSetFromOptions(snes); CHKERRQ(ierr);
     // set function evaluation routing and vector
     ierr = SNESSetFunction(snes, r, FormFunction, &ctx); CHKERRQ(ierr);
     // set Jacobian matrix data strcuture and evaluation routine
@@ -48,6 +47,7 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
     ierr = KSPSetTolerances(ksp, 1e-12, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
     // set runtime options THESE WILL OVERRIDE THE ABOVE THREE COMMANDS
     ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
+    ierr = SNESSetFromOptions(snes); CHKERRQ(ierr);
 
     /* Initialize local rhs vectors */
     ierr = VecCreate(PETSC_COMM_WORLD, &ctx.mass_src); CHKERRQ(ierr);
