@@ -44,7 +44,7 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
     // set linear solver defaults for the problem
     ierr = SNESGetKSP(snes,&ksp);CHKERRQ(ierr);
     ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
-    ierr = PCSetType(pc, PCJACOBI); CHKERRQ(ierr);
+    ierr = PCSetType(pc, PCNONE); CHKERRQ(ierr);
     ierr = KSPSetTolerances(ksp, 1e-12, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
     // set runtime options THESE WILL OVERRIDE THE ABOVE THREE COMMANDS
     ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
@@ -130,7 +130,7 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
     for (int index = 0; index < info.nnodes; index++){
         VecGetValues(velocity, 1, &index, &tmp_vel);
         VecGetValues(density, 1, &index, &tmp_rho);
-        PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\n", info.xnod[index], tmp_vel, tmp_rho);
+        // PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\t% .8e\n", info.xnod[index], tmp_vel, tmp_rho, u(info.xnod[index]), rho(info.xnod[index]) );
     }
     ierr = PetscFinalize();
     return ierr;

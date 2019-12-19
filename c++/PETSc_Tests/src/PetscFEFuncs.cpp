@@ -3,12 +3,6 @@
 PetscErrorCode PetscFEFuncs::PetscEvalBasis1D(const double x, const int n, PetscShapeFunction1D &shape){
   // shape function on reference element (-1,1)
   // FEM order (n), has (n+1) quadrature points, and integrates (2n-1) functions EXACTLY
-  ierr = VecCreate(PETSC_COMM_WORLD, &shape.psi); CHKERRQ(ierr);
-  ierr = VecCreate(PETSC_COMM_WORLD, &shape.dpsi); CHKERRQ(ierr);
-  ierr = VecSetSizes(shape.psi, PETSC_DECIDE, n); CHKERRQ(ierr);
-  ierr = VecSetSizes(shape.dpsi, PETSC_DECIDE, n); CHKERRQ(ierr);
-  ierr = VecSetFromOptions(shape.psi); CHKERRQ(ierr);
-  ierr = VecSetFromOptions(shape.dpsi); CHKERRQ(ierr);
   if (n==2){ //for linear FE's (n=1). Integrates up to linear FE's exactly.
     PetscInt i0 = 0, i1 = 1;
     PetscScalar v1,v2,v3,v4;
