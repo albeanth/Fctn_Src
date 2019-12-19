@@ -25,16 +25,16 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
      *   SNESSetFromOptions() is called _after_ any other customization
      *   routines.
      */
-    ierr = SNESSetFromOptions(snes); CHKERRQ(ierr);
-    // set function evaluation routing and vector
-    ierr = SNESSetFunction(snes, r, FormFunction, &ctx); CHKERRQ(ierr);
-    // set Jacobian matrix data strcuture and evaluation routine
-    ierr = SNESSetJacobian(snes, J, J, FormJacobian, NULL);CHKERRQ(ierr);
     // create Jacobian matrix data structure
     ierr = MatCreate(PETSC_COMM_WORLD,&J);CHKERRQ(ierr);
     ierr = MatSetSizes(J,PETSC_DECIDE,PETSC_DECIDE,4,4);CHKERRQ(ierr);
     ierr = MatSetFromOptions(J);CHKERRQ(ierr);
     ierr = MatSetUp(J);CHKERRQ(ierr);
+    ierr = SNESSetFromOptions(snes); CHKERRQ(ierr);
+    // set function evaluation routing and vector
+    ierr = SNESSetFunction(snes, r, FormFunction, &ctx); CHKERRQ(ierr);
+    // set Jacobian matrix data strcuture and evaluation routine
+    ierr = SNESSetJacobian(snes, J, J, FormJacobian, &ctx);CHKERRQ(ierr);
     /*
      * Customize nonlinear solver; set runtime options
      *   Set linear solver defaults for this problem. By extracting the
