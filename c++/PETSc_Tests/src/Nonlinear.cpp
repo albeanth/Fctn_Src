@@ -130,7 +130,7 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
     for (int index = 0; index < info.nnodes; index++){
         VecGetValues(velocity, 1, &index, &tmp_vel);
         VecGetValues(density, 1, &index, &tmp_rho);
-        // PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\t% .8e\n", info.xnod[index], tmp_vel, tmp_rho, u(info.xnod[index]), rho(info.xnod[index]) );
+        PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\t% .8e\n", info.xnod[index], tmp_vel, tmp_rho, u(info.xnod[index]), rho(info.xnod[index]) );
     }
     ierr = PetscFinalize();
     return ierr;

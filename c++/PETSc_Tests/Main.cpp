@@ -11,7 +11,7 @@ int main(int argc,char **args){
      * test #'s \geq 100
      *   nonlinear solver using petsc snes library tests
      */
-    const int selection {100};
+    const int selection {101};
     const bool hetero {false};
     const std::vector<double> Bnds {0.0, 1.0};
 

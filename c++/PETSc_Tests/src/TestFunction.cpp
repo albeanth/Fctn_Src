@@ -12,7 +12,10 @@ void TestFunction::display_selection(){
         strcpy(help, "\nQuadratic Solution test, Dirichlet BCs left and right, ");
       }
       else if (selection == 100){
-          strcpy(help, "\nNonlinear Solution test, Dirichlet BCs left and right, ");
+          strcpy(help, "\nNonlinear Solution test (linear), Dirichlet BCs left and right, ");
+      }
+      else if (selection == 101){
+          strcpy(help, "\nNonlinear Solution test (quadratic), Dirichlet BCs left and right, ");
       }
       else {
         throw std::invalid_argument("unknown problem selection");
@@ -45,6 +48,9 @@ double TestFunction::u(const double x){
     else if (selection == 100){
         val = 2.0 - x;
     }
+    else if (selection == 101){
+      val = 2.0 - pow(x,2.0);
+    }
     return val;
 }
 
@@ -61,6 +67,9 @@ double TestFunction::up(const double x){
    }
    else if (selection == 100){
        val = -1.0;
+   }
+   else if (selection == 101){
+     val = -2.0 * x;
    }
    return val;
 }
@@ -87,6 +96,9 @@ double TestFunction::rho(const double x){
   if (selection == 100){
     val = 1.0 + x;
   }
+  else if (selection == 101){
+    val = 1 + pow(x,2.0);
+  }
   return val;
 }
 
@@ -97,6 +109,9 @@ double TestFunction::rhop(const double x) {
   double val{NAN};
   if (selection == 100) {
     val = 1.0;
+  }
+  else if (selection == 101){
+    val = 2.0 * x;
   }
   return val;
 }
@@ -109,6 +124,9 @@ double TestFunction::pressure(const double x){
   if (selection == 100){
     val = 1.0 + x;
   }
+  else if (selection == 101){
+    val = 1 + pow(x,2.0);
+  }
   return val;
 }
 
@@ -119,6 +137,9 @@ double TestFunction::pressurep(const double x){
   double val{NAN};
   if (selection == 100){
     val = 1.0;
+  }
+  else if (selection == 101){
+    val = 2.0 * x;
   }
   return val;
 }
