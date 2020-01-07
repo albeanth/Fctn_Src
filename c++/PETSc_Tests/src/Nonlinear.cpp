@@ -15,7 +15,7 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
     ierr = SNESCreate(PETSC_COMM_WORLD, &snes); CHKERRQ(ierr);
     // create vectors for solution and residual
     ierr = VecCreate(PETSC_COMM_WORLD, &x); CHKERRQ(ierr);
-    ierr = VecSetSizes(x, PETSC_DECIDE, 4); CHKERRQ(ierr);
+    ierr = VecSetSizes(x, PETSC_DECIDE, 6); CHKERRQ(ierr);
     ierr = VecSetFromOptions(x); CHKERRQ(ierr);
     ierr = VecDuplicate(x, &r); CHKERRQ(ierr);
     /*
@@ -27,7 +27,7 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
      */
     // create Jacobian matrix data structure
     ierr = MatCreate(PETSC_COMM_WORLD,&J);CHKERRQ(ierr);
-    ierr = MatSetSizes(J,PETSC_DECIDE,PETSC_DECIDE,4,4);CHKERRQ(ierr);
+    ierr = MatSetSizes(J,PETSC_DECIDE,PETSC_DECIDE,6,6);CHKERRQ(ierr);
     ierr = MatSetFromOptions(J);CHKERRQ(ierr);
     ierr = MatSetUp(J);CHKERRQ(ierr);
     // set function evaluation routing and vector
@@ -55,36 +55,43 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
     ierr = VecSetFromOptions(ctx.mass_src); CHKERRQ(ierr);
     ierr = VecDuplicate(ctx.mass_src, &ctx.momen_src); CHKERRQ(ierr);
     ierr = VecCopy(ctx.mass_src, ctx.momen_src); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.mass_src, &ctx.energy_src); CHKERRQ(ierr);
+    ierr = VecCopy(ctx.mass_src, ctx.energy_src); CHKERRQ(ierr);
     ierr = InitializeLocalRHSF(); CHKERRQ(ierr);
     /* Initialize global solution vectors */
     ierr = VecCreate(PETSC_COMM_WORLD, &velocity); CHKERRQ(ierr);
     ierr = VecSetSizes(velocity, PETSC_DECIDE, info.nnodes); CHKERRQ(ierr);
     ierr = VecSetFromOptions(velocity); CHKERRQ(ierr);
     ierr = VecDuplicate(velocity, &density); CHKERRQ(ierr);
+    ierr = VecDuplicate(velocity, &energy); CHKERRQ(ierr);
     /* Assign left side BC */
     ierr = VecSetValue(velocity, 0, u(info.bounds[0]), INSERT_VALUES); CHKERRQ(ierr);
     ierr = VecSetValue(density, 0, rho(info.bounds[0]), INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecSetValue(energy, 0, efluid(info.bounds[0]), INSERT_VALUES); CHKERRQ(ierr);
     ierr = VecAssemblyBegin(velocity); CHKERRQ(ierr);
     ierr = VecAssemblyEnd(velocity); CHKERRQ(ierr);
     ierr = VecAssemblyBegin(density); CHKERRQ(ierr);
     ierr = VecAssemblyEnd(density); CHKERRQ(ierr);
+    ierr = VecAssemblyBegin(energy); CHKERRQ(ierr);
+    ierr = VecAssemblyEnd(energy); CHKERRQ(ierr);
 
     QuadParams1D qps1d;
     get1D_QPs(info.maxord, qps1d);
 
     PetscShapeFunction1D shape1d;
-    Vec TmpEvaldShape;
+    Vec MomenEvaldShape, EnergyEvaldShape;
     ierr = VecCreate(PETSC_COMM_WORLD, &shape1d.psi); CHKERRQ(ierr);
     ierr = VecCreate(PETSC_COMM_WORLD, &shape1d.dpsi); CHKERRQ(ierr);
     ierr = VecSetSizes(shape1d.psi, PETSC_DECIDE, info.order[0]); CHKERRQ(ierr);
     ierr = VecSetSizes(shape1d.dpsi, PETSC_DECIDE, info.order[0]); CHKERRQ(ierr);
     ierr = VecSetFromOptions(shape1d.psi); CHKERRQ(ierr);
     ierr = VecSetFromOptions(shape1d.dpsi); CHKERRQ(ierr);
-    ierr = VecDuplicate(shape1d.psi, &TmpEvaldShape);CHKERRQ(ierr);
+    ierr = VecDuplicate(shape1d.psi, &MomenEvaldShape);CHKERRQ(ierr);
+    ierr = VecDuplicate(shape1d.psi, &EnergyEvaldShape);CHKERRQ(ierr);
 
-    PetscScalar src_mass, src_momen;
+    PetscScalar src_mass, src_momen, src_energy;
     double xL, xR, dx, x;
-    PetscScalar tmp_vel, tmp_rho;
+    PetscScalar tmp_vel, tmp_rho, tmp_efluid;
     /* Sweep over elements and solve */
     for (int elem = 0; elem < info.nels; elem ++){
         xL = info.xnod[ info.nod[elem][0] ];
@@ -96,32 +103,40 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
             x = xL + (1.0 + qps1d.xw[l1]) * dx;
             /* evaluate basis functions */
             ierr = PetscEvalBasis1D(qps1d.xw[l1], info.order[elem], shape1d); CHKERRQ(ierr);CHKERRQ(ierr);
-            ierr = VecCopy(shape1d.psi, TmpEvaldShape);CHKERRQ(ierr);
+            ierr = VecCopy(shape1d.psi, MomenEvaldShape);CHKERRQ(ierr);
+            ierr = VecCopy(shape1d.psi, EnergyEvaldShape);CHKERRQ(ierr);
             /* evaluate known functions and integrate */
             src_mass = MMS_Src_Mass(x);
             src_momen = MMS_Src_Momentum(x);
+            src_energy = MMS_Src_Energy(x);
             ierr = VecScale(shape1d.psi, src_mass * qps1d.w[l1] * dx); CHKERRQ(ierr);
-            ierr = VecScale(TmpEvaldShape, src_momen * qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(MomenEvaldShape, src_momen * qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(EnergyEvaldShape, src_energy * qps1d.w[l1] * dx); CHKERRQ(ierr);
             ierr = VecAXPY(ctx.mass_src, 1.0, shape1d.psi); CHKERRQ(ierr);
-            ierr = VecAXPY(ctx.momen_src, 1.0, TmpEvaldShape); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.momen_src, 1.0, MomenEvaldShape); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.energy_src, 1.0, EnergyEvaldShape); CHKERRQ(ierr);
         }
         /* get upwind info */
         if (elem == 0) { // use BC info
           tmp_vel = u(info.bounds[0]);
           tmp_rho = rho(info.bounds[0]);
+          tmp_efluid = efluid(info.bounds[0]);
         } 
         else { // use previous element info
           index = elem * info.order[elem] - 1;
           VecGetValues(velocity, 1, &index, &tmp_vel);
           VecGetValues(density, 1, &index, &tmp_rho);
+          VecGetValues(energy, 1, &index, &tmp_efluid);
         }
         // compute upwind values for mass and momentum
         ctx.mass_upwind = tmp_vel * tmp_rho;
-        ctx.momen_upwind = tmp_rho * pow(tmp_vel, 2.0);
-        
+        ctx.momen_upwind_i = tmp_rho * pow(tmp_vel, 2.0);
+        ctx.momen_upwind_ii = tmp_efluid;
+        ctx.energy_upwind_i = tmp_rho * pow(tmp_vel, 3.0);
+        ctx.energy_upwind_ii = tmp_vel * tmp_efluid;
+
         /* Solve nonlinear system of equations over elem */
         ierr = NLSolve(elem); CHKERRQ(ierr);
-        
         /* set vector entries equal to zero (while maintaining structure) */
         ierr = InitializeLocalRHSF(); CHKERRQ(ierr);
     }
@@ -130,7 +145,8 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
     for (int index = 0; index < info.nnodes; index++){
         VecGetValues(velocity, 1, &index, &tmp_vel);
         VecGetValues(density, 1, &index, &tmp_rho);
-        PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\t% .8e\n", info.xnod[index], tmp_vel, tmp_rho, u(info.xnod[index]), rho(info.xnod[index]) );
+        VecGetValues(energy, 1, &index, &tmp_efluid);
+        PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\n", info.xnod[index], tmp_vel, tmp_rho, tmp_efluid, u(info.xnod[index]), rho(info.xnod[index]), efluid(info.xnod[index]) );
     }
     ierr = PetscFinalize();
     return ierr;
@@ -146,6 +162,9 @@ PetscErrorCode NonLinear::InitializeLocalRHSF(){
     ierr = VecSet(ctx.momen_src, 0.0); CHKERRQ(ierr);
     ierr = VecAssemblyBegin(ctx.momen_src); CHKERRQ(ierr);
     ierr = VecAssemblyEnd(ctx.momen_src); CHKERRQ(ierr);
+    ierr = VecSet(ctx.energy_src, 0.0); CHKERRQ(ierr);
+    ierr = VecAssemblyBegin(ctx.energy_src); CHKERRQ(ierr);
+    ierr = VecAssemblyEnd(ctx.energy_src); CHKERRQ(ierr);
     return ierr;
 }
 
@@ -161,16 +180,18 @@ PetscErrorCode NonLinear::NLSolve(const int elem){
     // ierr = SNESView(snes, PETSC_VIEWER_STDOUT_WORLD);
 
     /* Map solution to global solution */
-    PetscScalar value[4];         // array of values computed from NL solve
-    PetscInt idx[4] = {0,1,2,3};  // indices of values to pull from NL solve
-    PetscInt el = elem * 2;
-    ierr = VecGetValues(x, 4, idx, value); CHKERRQ(ierr);
+    PetscScalar value[6];             // array of values computed from NL solve
+    PetscInt idx[6] = {0,1,2,3,4,5};  // indices of values to pull from NL solve
+    PetscInt el = elem * 2;           // 2 equals num of unknowns per cell
+    ierr = VecGetValues(x, 6, idx, value); CHKERRQ(ierr);
     ierr = VecSetValue(velocity, el, value[0], INSERT_VALUES); CHKERRQ(ierr);
     ierr = VecSetValue(velocity, el+1, value[1], INSERT_VALUES); CHKERRQ(ierr);
     ierr = VecSetValue(density, el, value[2], INSERT_VALUES); CHKERRQ(ierr);
     ierr = VecSetValue(density, el+1, value[3], INSERT_VALUES); CHKERRQ(ierr);
-    // PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\n", info.xnod[el], value[0], value[2]);
-    // PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\n", info.xnod[el+1], value[1], value[3]);
+    ierr = VecSetValue(energy, el, value[4], INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecSetValue(energy, el+1, value[5], INSERT_VALUES); CHKERRQ(ierr);
+    // PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\n", info.xnod[el], value[0], value[2], value[4]);
+    // PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\n", info.xnod[el+1], value[1], value[3], value[5]);
     // exit(-1);
     return ierr;
 }
@@ -185,17 +206,18 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
      * OUTPUTS:
      *    f    - function vector
      */
-    // printf("  In FormFunction()\n");
     ApplicationCTX *user = (ApplicationCTX *)ctx;
     PetscErrorCode ierr;
     const PetscScalar *xx;
     PetscScalar       *ff;
     PetscScalar mass_src[2];
     PetscScalar momen_src[2];
+    PetscScalar efluid_src[2];
     PetscInt idx[2] = {0, 1};
     /* Get values from local rhsf vectors and store into petsc scalars */
     ierr = VecGetValues(user->mass_src, 2, idx, mass_src);
     ierr = VecGetValues(user->momen_src, 2, idx, momen_src);
+    ierr = VecGetValues(user->energy_src, 2, idx, efluid_src);
 
     // printf("  user->mass_upwind = %.3e\n", user->mass_upwind);
     // printf("  user->mass_src[0] = %.3e\n", mass_src[0]);
@@ -203,6 +225,9 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     // printf("  user->momen_upwind = %.3e\n", user->momen_upwind);
     // printf("  user->momen_src[0] = %.3e\n", momen_src[0]);
     // printf("  user->momen_src[1] = %.3e\n", momen_src[1]);
+    // printf("  user->energy_upwind_i, energy_upwind_ii = %.3e, %.3e\n", user->energy_upwind_i, user->energy_upwind_ii);
+    // printf("  user->efluid_src[0] = %.3e\n", efluid_src[0]);
+    // printf("  user->efluid_src[1] = %.3e\n", efluid_src[1]);
     // exit(-1);
 
     /*
@@ -218,8 +243,18 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     /* Compute function */
     ff[0] = (xx[0]*xx[2])/3.0 + (xx[0]*xx[3])/6.0 + (xx[1]*xx[2])/6.0 + (xx[1]*xx[3])/3.0 - user->mass_upwind - mass_src[0];
     ff[1] =-(xx[0]*xx[2])/3.0 - (xx[0]*xx[3])/6.0 - (xx[1]*xx[2])/6.0 - (xx[1]*xx[3])/3.0 + xx[1]*xx[3] - mass_src[1];
-    ff[2] = (xx[2]*pow(xx[0],2.0))/4.0 + (xx[3]*pow(xx[0],2.0))/12.0 + (xx[2]*xx[0]*xx[1])/6.0 + (xx[3]*xx[0]*xx[1])/6.0 + (xx[2]*pow(xx[1],2.0))/12.0 + (xx[3]*pow(xx[1],2.0))/4.0 - user->momen_upwind - momen_src[0];
-    ff[3] =-(xx[2]*pow(xx[0],2.0))/4.0 - (xx[3]*pow(xx[0],2.0))/12.0 - (xx[2]*xx[0]*xx[1])/6.0 - (xx[3]*xx[0]*xx[1])/6.0 - (xx[2]*pow(xx[1],2.0))/12.0 - (xx[3]*pow(xx[1],2.0))/4.0 + xx[3]*pow(xx[1],2.0) - momen_src[1];
+    ff[2] = (xx[2]*pow(xx[0],2.0))/4.0 + (xx[3]*pow(xx[0],2.0))/12.0 + (xx[2]*xx[0]*xx[1])/6.0 + (xx[3]*xx[0]*xx[1])/6.0 + (xx[2]*pow(xx[1],2.0))/12.0 + (xx[3]*pow(xx[1],2.0))/4.0 - user->momen_upwind_i
+            - user->momen_upwind_ii + xx[4]/2.0 + xx[5]/2.0 
+            - momen_src[0];
+    ff[3] =-(xx[2]*pow(xx[0],2.0))/4.0 - (xx[3]*pow(xx[0],2.0))/12.0 - (xx[2]*xx[0]*xx[1])/6.0 - (xx[3]*xx[0]*xx[1])/6.0 - (xx[2]*pow(xx[1],2.0))/12.0 - (xx[3]*pow(xx[1],2.0))/4.0 + xx[3]*pow(xx[1],2.0) 
+            + xx[5] - xx[4]/2.0 - xx[5]/2.0 
+            - momen_src[1];
+    ff[4] = 1.0/40.0 * (xx[2] * (4.0*pow(xx[0],3.0) + 3.0*pow(xx[0],2.0)*xx[1] + 2.0*xx[0]*pow(xx[1],2.0) + pow(xx[1],3.0)) + xx[3] * (pow(xx[0],3.0) + 2.0*pow(xx[0],2.0)*xx[1] + 3.0*xx[0]*pow(xx[1],2.0) + 4.0*pow(xx[1],3.0)) ) - user->energy_upwind_i/2.0
+            + ( 1.0 + user->gamma_s) * ( -user->energy_upwind_ii + xx[4]*xx[0]/3.0 + xx[5]*xx[0]/6.0 + xx[4]*xx[1]/6.0 + xx[5]*xx[1]/3.0 )
+            - efluid_src[0];
+    ff[5] =-1.0/40.0 * (xx[2] * (4.0*pow(xx[0],3.0) + 3.0*pow(xx[0],2.0)*xx[1] + 2.0*xx[0]*pow(xx[1],2.0) + pow(xx[1],3.0)) + xx[3] * (pow(xx[0],3.0) + 2.0*pow(xx[0],2.0)*xx[1] + 3.0*xx[0]*pow(xx[1],2.0) + 4.0*pow(xx[1],3.0)) ) + xx[3]*pow(xx[1],3.0)/2.0
+            + (1.0 + user->gamma_s) * ( xx[1]*xx[5] - xx[4]*xx[0]/3.0 - xx[5]*xx[0]/6.0 - xx[4]*xx[1]/6.0 - xx[5]*xx[1]/3.0 )
+            - efluid_src[1];
 
     /* Restore vectors */
     ierr = VecRestoreArrayRead(x,&xx);CHKERRQ(ierr);
@@ -228,14 +263,18 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     return 0;
 }
 
-PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *dummy) {
+PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx) {
     /*
      *  compute Jacobia entries and insert into matrix
      */
+    ApplicationCTX *user = (ApplicationCTX *)ctx;
     const PetscScalar *xx;
-    PetscScalar A[16];
+    PetscScalar A[36];
     PetscErrorCode ierr;
-    PetscInt idx[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    PetscInt idx[36] = { 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+                        10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+                        20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+                        30, 31, 32, 33, 34, 35};
 
     /* Get pointer to vector data */
     ierr = VecGetArrayRead(x,&xx);CHKERRQ(ierr);
@@ -246,24 +285,46 @@ PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *dummy) {
     A[1] = xx[2]/6.0 + xx[3]/3.0;
     A[2] = xx[0]/3.0 + xx[1]/6.0;
     A[3] = xx[0]/6.0 + xx[1]/3.0;
+    A[4] = 0.0;
+    A[5] = 0.0;
     // over f1
-    A[4] = -A[0];         //-xx[2]/3.0 - xx[3]/6.0;
-    A[5] = -A[1] + xx[3]; //-xx[2]/6.0 - xx[3]/3.0 + xx[3];
-    A[6] = -A[2];         //-xx[0]/3.0 - xx[1]/6.0;
-    A[7] = -A[3] + xx[1]; //-xx[0]/6.0 - xx[1]/3.0 + xx[1];
+    A[6] = -A[0];        
+    A[7] = -A[1] + xx[3];
+    A[8] = -A[2];        
+    A[9] = -A[3] + xx[1];
+    A[10] = 0.0;
+    A[11] = 0.0;
     // over f2
-    A[8] = (2.0*xx[0]*xx[2])/4.0 + (2.0*xx[0]*xx[3])/12.0 + (xx[2]*xx[1])/6.0 + (xx[3]*xx[1])/6.0;
-    A[9] = (2.0*xx[1]*xx[3])/4.0 + (2.0*xx[1]*xx[2])/12.0 + (xx[3]*xx[0])/6.0 + (xx[2]*xx[0])/6.0;
-    A[10] = pow(xx[0], 2.0)/4.0 + (xx[0]*xx[1])/6.0 + pow(xx[1],2.0)/12.0;
-    A[11] = pow(xx[0], 2.0)/12.0 + (xx[0]*xx[1])/6.0 + pow(xx[1], 2.0)/4.0;
+    A[12] = (2.0*xx[0]*xx[2])/4.0 + (2.0*xx[0]*xx[3])/12.0 + (xx[2]*xx[1])/6.0 + (xx[3]*xx[1])/6.0;
+    A[13] = (2.0*xx[1]*xx[3])/4.0 + (2.0*xx[1]*xx[2])/12.0 + (xx[3]*xx[0])/6.0 + (xx[2]*xx[0])/6.0;
+    A[14] = pow(xx[0], 2.0)/4.0 + (xx[0]*xx[1])/6.0 + pow(xx[1],2.0)/12.0;
+    A[15] = pow(xx[0], 2.0)/12.0 + (xx[0]*xx[1])/6.0 + pow(xx[1], 2.0)/4.0;
+    A[16] = 1.0/2.0;
+    A[17] = 1.0/2.0;
     // over f3
-    A[12] = -A[8];                     //-(2.0*xx[0]*xx[2])/4.0 - (2.0*xx[0]*xx[3])/12.0 - (xx[2]*xx[1])/6.0 - (xx[3]*xx[1])/6.0;
-    A[13] = -A[9] + 2.0*xx[1]*xx[3] ;  //-(2.0*xx[1]*xx[3])/4.0 - (2.0*xx[1]*xx[2])/12.0 - (xx[3]*xx[0])/6.0 - (xx[2]*xx[0])/6.0 + 2.0*xx[1]*xx[3];
-    A[14] = -A[10];                    //-pow(xx[0], 2.0)/4.0 - (xx[0]*xx[1])/6.0 - pow(xx[0],2.0)/12.0;
-    A[15] = -A[11] + pow(xx[1], 2.0);  //-pow(xx[0], 2.0)/12.0 - (xx[0]*xx[1])/6.0 - pow(xx[1], 2.0)/4.0 + pow(xx[1], 2.0);
+    A[18] = -A[8];                   
+    A[19] = -A[9] + 2.0*xx[1]*xx[3];
+    A[20] = -A[10];                  
+    A[21] = -A[11] + pow(xx[1], 2.0);
+    A[22] = -A[16];
+    A[23] = -A[17];
+    // over f4
+    A[24] = 1.0/40.0 * (xx[2]*(12.0*pow(xx[0],2.0) + 6.0*xx[0]*xx[1] + 2.0*pow(xx[1],2.0)) + xx[3]*(3.0*pow(xx[0],2.0) + 4.0*xx[0]*xx[1] + 2.0*pow(xx[1],2.0)) ) + (1.0 + user->gamma_s) * (xx[4]/3.0 + xx[5]/6.0);
+    A[25] = 1.0/40.0 * (xx[2]*(3.0*pow(xx[0],2.0) + 4.0*xx[0]*xx[1] + 3.0*pow(xx[1],2.0)) + xx[3]*(2.0*pow(xx[0],2.0) + 6.0*xx[0]*xx[1] + 12.0*pow(xx[1],2.0)) ) + (1.0 + user->gamma_s) * (xx[4]/6.0 + xx[5]/3.0);
+    A[26] = 1.0/40.0 * (4.0*pow(xx[0],3.0) + 3.0*pow(xx[0],2.0)*xx[1] + 2.0*xx[0]*pow(xx[1],2.0) + pow(xx[1],3.0) );
+    A[27] = 1.0/40.0 * (pow(xx[0],3.0) + 2.0*pow(xx[0],2.0)*xx[1] + 3.0*xx[0]*pow(xx[1],2.0) + 4.0*pow(xx[1],3.0) );
+    A[28] = (1.0 + user->gamma_s) * (xx[0]/3.0 + xx[1]/6.0);
+    A[29] = (1.0 + user->gamma_s) * (xx[0]/6.0 + xx[1]/3.0);
+    // over f5
+    A[30] = -A[24];
+    A[31] = -A[25] + (3.0*pow(xx[1],2.0)*xx[3])/2.0 + (1.0 + user->gamma_s) * xx[5];
+    A[32] = -A[26];
+    A[33] = -A[27] + pow(xx[1],3.0)/2.0;
+    A[34] = -A[28];
+    A[35] = -A[29] + (1.0 + user->gamma_s) * xx[1];
 
     /* and insert into matrix B */
-    ierr = MatSetValues(B, 4, idx, 4, idx, A, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = MatSetValues(B, 6, idx, 6, idx, A, INSERT_VALUES); CHKERRQ(ierr);
 
     /* Restor vector */
     ierr = VecRestoreArrayRead(x, &xx);CHKERRQ(ierr);

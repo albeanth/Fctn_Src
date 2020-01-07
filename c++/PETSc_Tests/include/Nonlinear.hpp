@@ -18,15 +18,18 @@
 
 // strcut definitions
 struct ApplicationCTX{
+    PetscScalar gamma_s = 1.0;
     Vec mass_src;      /* mms source for cons. of mass */
     Vec momen_src;     /* mms source for cons. of momentum */
+    Vec energy_src;    /* mms source for cons. of momentum */
     PetscScalar mass_upwind;   /* upwind source for cons. of mass */
-    PetscScalar momen_upwind;  /* upwind source for cons. of momentum */
+    PetscScalar momen_upwind_i, momen_upwind_ii;  /* upwind sources for cons. of momentum */
+    PetscScalar energy_upwind_i, energy_upwind_ii; /* upwind source for cons. of momentum */
 };
 
 // function declarations for nonlinear function and jacobian forms
 extern PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx);
-extern PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *dummy);
+extern PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx);
 
 class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
     /*
@@ -38,6 +41,7 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         // Public Member Variables
         Vec velocity; /* global solution */
         Vec density;  /* global solution */
+        Vec energy;  /* global solution */
         // Public Member Functions
         PetscErrorCode NL_1D(int argc, char **args);
     private:

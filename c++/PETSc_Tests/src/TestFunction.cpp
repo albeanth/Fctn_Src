@@ -116,7 +116,7 @@ double TestFunction::rhop(const double x) {
   return val;
 }
 
-double TestFunction::pressure(const double x){
+double TestFunction::efluid(const double x){
   /*
   function definition for fluid pressure
   */
@@ -130,7 +130,7 @@ double TestFunction::pressure(const double x){
   return val;
 }
 
-double TestFunction::pressurep(const double x){
+double TestFunction::efluidp(const double x){
   /*
   first derivatice of fluid pressure
   */
@@ -200,5 +200,14 @@ double TestFunction::MMS_Src_Momentum(const double x){
      * source to define the MMS problem for 
      * the conservation of momentum
      */
-    return rho(x) * 2.0 * u(x) * up(x) + rhop(x) * pow(u(x), 2.0) - pressurep(x);
+    return rho(x) * 2.0 * u(x) * up(x) + rhop(x) * pow(u(x), 2.0);
+}
+
+double TestFunction::MMS_Src_Energy(const double x) {
+  /*
+   * source to define the MMS problem for
+   * the conservation of momentum
+   */
+  double gamma_s {1.0};
+  return ( (1.0+gamma_s) * (u(x)*efluidp(x) + up(x)*efluid(x)) + 1.0/2.0*(rho(x)*3.0*pow(u(x),2.0)*up(x) + rhop(x)*pow(u(x),3.0)) );
 }

@@ -42,8 +42,8 @@ class TestFunction{
             // fluid density and pressure
             double rho(const double x);
             double rhop(const double x);
-            double pressure(const double x);
-            double pressurep(const double x);
+            double efluid(const double x);
+            double efluidp(const double x);
             // cross sections for neutron diffusion
             double SigA(const double x);
             double D(const double x);
@@ -52,5 +52,6 @@ class TestFunction{
             double MMS_Src(const double x);          // neutron diffusion
             double MMS_Src_Mass(const double x);     // cons. of mass
             double MMS_Src_Momentum(const double x); // cons. of momentum
+            double MMS_Src_Energy(const double x);   // cons. of energy
 };
 #endif
