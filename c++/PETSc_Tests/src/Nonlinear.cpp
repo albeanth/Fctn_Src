@@ -241,14 +241,17 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     ierr = VecGetArray(f,&ff);CHKERRQ(ierr);
 
     /* Compute function */
+    // Conservation of mass
     ff[0] = (xx[0]*xx[2])/3.0 + (xx[0]*xx[3])/6.0 + (xx[1]*xx[2])/6.0 + (xx[1]*xx[3])/3.0 - user->mass_upwind - mass_src[0];
     ff[1] =-(xx[0]*xx[2])/3.0 - (xx[0]*xx[3])/6.0 - (xx[1]*xx[2])/6.0 - (xx[1]*xx[3])/3.0 + xx[1]*xx[3] - mass_src[1];
+    // Conservation of Momentum
     ff[2] = (xx[2]*pow(xx[0],2.0))/4.0 + (xx[3]*pow(xx[0],2.0))/12.0 + (xx[2]*xx[0]*xx[1])/6.0 + (xx[3]*xx[0]*xx[1])/6.0 + (xx[2]*pow(xx[1],2.0))/12.0 + (xx[3]*pow(xx[1],2.0))/4.0 - user->momen_upwind_i
-            - user->momen_upwind_ii + xx[4]/2.0 + xx[5]/2.0 
+            + user->gamma_s*(-user->momen_upwind_ii + xx[4]/2.0 + xx[5]/2.0)
             - momen_src[0];
     ff[3] =-(xx[2]*pow(xx[0],2.0))/4.0 - (xx[3]*pow(xx[0],2.0))/12.0 - (xx[2]*xx[0]*xx[1])/6.0 - (xx[3]*xx[0]*xx[1])/6.0 - (xx[2]*pow(xx[1],2.0))/12.0 - (xx[3]*pow(xx[1],2.0))/4.0 + xx[3]*pow(xx[1],2.0) 
-            + xx[5] - xx[4]/2.0 - xx[5]/2.0 
+            + user->gamma_s*(xx[5] - xx[4]/2.0 - xx[5]/2.0)
             - momen_src[1];
+    // Conservation of Energy
     ff[4] = 1.0/40.0 * (xx[2] * (4.0*pow(xx[0],3.0) + 3.0*pow(xx[0],2.0)*xx[1] + 2.0*xx[0]*pow(xx[1],2.0) + pow(xx[1],3.0)) + xx[3] * (pow(xx[0],3.0) + 2.0*pow(xx[0],2.0)*xx[1] + 3.0*xx[0]*pow(xx[1],2.0) + 4.0*pow(xx[1],3.0)) ) - user->energy_upwind_i/2.0
             + ( 1.0 + user->gamma_s) * ( -user->energy_upwind_ii + xx[4]*xx[0]/3.0 + xx[5]*xx[0]/6.0 + xx[4]*xx[1]/6.0 + xx[5]*xx[1]/3.0 )
             - efluid_src[0];
@@ -280,6 +283,7 @@ PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx) {
     ierr = VecGetArrayRead(x,&xx);CHKERRQ(ierr);
 
     /* Compute Jacobian entries */
+    /* Conservation of Mass */
     // over f0
     A[0] = xx[2]/3.0 + xx[3]/6.0;
     A[1] = xx[2]/6.0 + xx[3]/3.0;
@@ -294,22 +298,24 @@ PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx) {
     A[9] = -A[3] + xx[1];
     A[10] = 0.0;
     A[11] = 0.0;
+    /* Conservation of Momentum */
     // over f2
-    A[12] = (2.0*xx[0]*xx[2])/4.0 + (2.0*xx[0]*xx[3])/12.0 + (xx[2]*xx[1])/6.0 + (xx[3]*xx[1])/6.0;
-    A[13] = (2.0*xx[1]*xx[3])/4.0 + (2.0*xx[1]*xx[2])/12.0 + (xx[3]*xx[0])/6.0 + (xx[2]*xx[0])/6.0;
+    A[12] = (xx[0]*xx[2])/2.0 + (xx[0]*xx[3])/6.0 + (xx[2]*xx[1])/6.0 + (xx[3]*xx[1])/6.0;
+    A[13] = (xx[1]*xx[3])/2.0 + (xx[1]*xx[2])/6.0 + (xx[3]*xx[0])/6.0 + (xx[2]*xx[0])/6.0;
     A[14] = pow(xx[0], 2.0)/4.0 + (xx[0]*xx[1])/6.0 + pow(xx[1],2.0)/12.0;
     A[15] = pow(xx[0], 2.0)/12.0 + (xx[0]*xx[1])/6.0 + pow(xx[1], 2.0)/4.0;
-    A[16] = 1.0/2.0;
-    A[17] = 1.0/2.0;
+    A[16] = user->gamma_s/2.0;
+    A[17] = user->gamma_s/2.0;
     // over f3
-    A[18] = -A[8];                   
-    A[19] = -A[9] + 2.0*xx[1]*xx[3];
-    A[20] = -A[10];                  
-    A[21] = -A[11] + pow(xx[1], 2.0);
+    A[18] = -A[12];                   
+    A[19] = -A[13] + 2.0*xx[1]*xx[3];
+    A[20] = -A[14];                  
+    A[21] = -A[15] + pow(xx[1], 2.0);
     A[22] = -A[16];
     A[23] = -A[17];
+    /* Conservation of Energy */
     // over f4
-    A[24] = 1.0/40.0 * (xx[2]*(12.0*pow(xx[0],2.0) + 6.0*xx[0]*xx[1] + 2.0*pow(xx[1],2.0)) + xx[3]*(3.0*pow(xx[0],2.0) + 4.0*xx[0]*xx[1] + 2.0*pow(xx[1],2.0)) ) + (1.0 + user->gamma_s) * (xx[4]/3.0 + xx[5]/6.0);
+    A[24] = 1.0/40.0 * (xx[2]*(12.0*pow(xx[0],2.0) + 6.0*xx[0]*xx[1] + 2.0*pow(xx[1],2.0)) + xx[3]*(3.0*pow(xx[0],2.0) + 4.0*xx[0]*xx[1] + 3.0*pow(xx[1],2.0)) ) + (1.0 + user->gamma_s) * (xx[4]/3.0 + xx[5]/6.0);
     A[25] = 1.0/40.0 * (xx[2]*(3.0*pow(xx[0],2.0) + 4.0*xx[0]*xx[1] + 3.0*pow(xx[1],2.0)) + xx[3]*(2.0*pow(xx[0],2.0) + 6.0*xx[0]*xx[1] + 12.0*pow(xx[1],2.0)) ) + (1.0 + user->gamma_s) * (xx[4]/6.0 + xx[5]/3.0);
     A[26] = 1.0/40.0 * (4.0*pow(xx[0],3.0) + 3.0*pow(xx[0],2.0)*xx[1] + 2.0*xx[0]*pow(xx[1],2.0) + pow(xx[1],3.0) );
     A[27] = 1.0/40.0 * (pow(xx[0],3.0) + 2.0*pow(xx[0],2.0)*xx[1] + 3.0*xx[0]*pow(xx[1],2.0) + 4.0*pow(xx[1],3.0) );

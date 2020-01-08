@@ -18,7 +18,7 @@
 
 // strcut definitions
 struct ApplicationCTX{
-    PetscScalar gamma_s = 1.0;
+    PetscScalar gamma_s = 5.0/3.0 - 1.0;
     Vec mass_src;      /* mms source for cons. of mass */
     Vec momen_src;     /* mms source for cons. of momentum */
     Vec energy_src;    /* mms source for cons. of momentum */

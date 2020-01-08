@@ -27,6 +27,7 @@ class TestFunction{
         */
         selection{problem}, hetero{material}{ // initialize member variables
             display_selection();              // call display selection function
+            gamma_s = 5.0/3.0 - 1.0;
         }
         public:
             /* Public member variables */
@@ -34,7 +35,6 @@ class TestFunction{
             const bool hetero;
             char help[120];
             /* Public member functions */
-            void display_selection();
             // neutron diffusion or fluid velocity
             double u(const double x);
             double up(const double x);
@@ -53,5 +53,10 @@ class TestFunction{
             double MMS_Src_Mass(const double x);     // cons. of mass
             double MMS_Src_Momentum(const double x); // cons. of momentum
             double MMS_Src_Energy(const double x);   // cons. of energy
+        private:
+          /* Private member variables */
+          double gamma_s;
+          /* Private member functions */
+          void display_selection();
 };
 #endif
