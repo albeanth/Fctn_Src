@@ -92,6 +92,8 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
     PetscScalar src_mass, src_momen, src_energy;
     double xL, xR, dx, x;
     PetscScalar tmp_vel, tmp_rho, tmp_efluid;
+    // PetscScalar aa[2], bb[2], cc[2];
+    // PetscInt tmpIdx[2] = {0, 1};
     /* Sweep over elements and solve */
     for (int elem = 0; elem < info.nels; elem ++){
         xL = info.xnod[ info.nod[elem][0] ];
@@ -134,6 +136,12 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
         ctx.momen_upwind_ii = tmp_efluid;
         ctx.energy_upwind_i = tmp_rho * pow(tmp_vel, 3.0);
         ctx.energy_upwind_ii = tmp_vel * tmp_efluid;
+        
+        // VecGetValues(ctx.mass_src, 2, tmpIdx, aa);
+        // VecGetValues(ctx.momen_src, 2, tmpIdx, bb);
+        // VecGetValues(ctx.energy_src, 2, tmpIdx, cc);
+        // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\n", aa[0], bb[0], cc[0]);
+        // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\n", aa[1], bb[1], cc[1]);
 
         /* Solve nonlinear system of equations over elem */
         ierr = NLSolve(elem); CHKERRQ(ierr);
