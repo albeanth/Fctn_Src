@@ -1,8 +1,9 @@
 \documentclass{article}
 \usepackage{../../../../TechDocs/LatexStyles/standard-4}
+\newcommand{\x}{x(\hat{x})}
 \begin{document}
 
-\section{Test For The Conservation of LDFEM Discretized Hydrodynamics Equations}
+\section{Test For The Conservation of LDFEM Discretized Hydrodynamics Equations - No Energy}
 The compressible conservation mass and momentum equations are shown below,
 \begin{align}
 \label{eq::ConsMass}
@@ -19,20 +20,23 @@ u(x) &= 2.0 - x,\\[5pt]
 \rho(x) &= 1.0 + x.
 \end{align}
 
+% ==============================
+%       Conservation of Mass
+% ==============================
 \subsection{Conservation of Mass}
 Discretizing the conservation of mass (Equation \ref{eq::ConsMass}) using discontinuous finite elements results in the following,
 \begin{align}
 \label{eq::LDFEM-MassLHS-1}
-\frac{u_{i,1}\rho_{i,1}}{3} + \frac{u_{i,1}\rho_{i,2}}{6} + \frac{u_{i,2}\rho_{i,1}}{6} + \frac{u_{i,2}\rho_{i,2}}{3} = f_{i,1},\\[5pt]
+&\frac{u_{i,1}\rho_{i,1}}{3} + \frac{u_{i,1}\rho_{i,2}}{6} + \frac{u_{i,2}\rho_{i,1}}{6} + \frac{u_{i,2}\rho_{i,2}}{3} = f_{m;i,1},\\[5pt]
 \label{eq::LDFEM-MassLHS-2}
--\frac{u_{i,1}\rho_{i,1}}{3} - \frac{u_{i,1}\rho_{i,2}}{6} - \frac{u_{i,2}\rho_{i,1}}{6} - \frac{u_{i,2}\rho_{i,2}}{3} + u_{i,2}(x)\rho_{i,2}(x) = f_{i,2},
+-&\frac{u_{i,1}\rho_{i,1}}{3} - \frac{u_{i,1}\rho_{i,2}}{6} - \frac{u_{i,2}\rho_{i,1}}{6} - \frac{u_{i,2}\rho_{i,2}}{3} + u_{i,2}\rho_{i,2} = f_{m;i,2},
 \end{align}
 where,
 \begin{align}
 \label{eq::LDFEM-MassRHS-1}
-f_{i,1} = u_{i-1,2}\rho_{i-1,2} + \left( \frac{d\rho}{dx}u(x) + \rho(x)\frac{du}{dx} \right),\\[5pt]
+f_{m;i,1} &= u_{i-1,2}\rho_{i-1,2} + \left( \frac{d}{dx}\rho(\x) u(\x) + \rho(\x)\frac{d}{dx}u(\x) \right),\\[5pt]
 \label{eq::LDFEM-MassRHS-2}
-f_{i,1} = \left( \frac{d\rho}{dx}u(x) + \rho(x)\frac{du}{dx} \right).
+f_{m;i,2} &= \left( \frac{d}{dx}\rho(\x)u(\x) + \rho(\x)\frac{d}{dx}u(\x) \right).
 \end{align}
 
 We can test for conservativeness by inserting Equation \ref{eq::MMS-Velocity} into Equations \ref{eq::LDFEM-MassLHS-1} through \ref{eq::LDFEM-MassRHS-2}. Since we have assumed analytic solutions, we should observe that Equations \ref{eq::LDFEM-MassLHS-1} and \ref{eq::LDFEM-MassRHS-1} and Equations \ref{eq::LDFEM-MassLHS-2} and \ref{eq::LDFEM-MassRHS-2} should be the same. Figures \ref{fig::Mass-1} and \ref{fig::Mass-2} show the that the discretized equations for Equation \ref{eq::ConsMass} are conservative.
@@ -49,15 +53,39 @@ We can test for conservativeness by inserting Equation \ref{eq::MMS-Velocity} in
 \label{fig::Mass-2}
 \end{figure}
 
+
+% ==============================
+%       Conservation of Momentum
+% ==============================
 \subsection{Conservation of Momentum}
 Discretizing the conservation of momentum (Equation \ref{eq::ConsMomen}) using discontinuous finite elements results in the following,
 \begin{align}
 \label{eq::LDFEM-MomenLHS-1}
-\frac{\rho_{i,1}u_{i,1}^2}{4} + \frac{\rho_{i,2}u_{i,1}^2}{12} + \frac{\rho_{i,1}u_{i,1}u_{i,2}}{6} + \frac{\rho_{i,2}u_{i,1}u_{i,2}}{6} + \frac{\rho_{i,1}u_{i,2}^2}{12} + \frac{\rho_{i,2}u_{i,2}^2}{4} = f_{i,1},\\[5pt]
--\frac{\rho_{i,1}u_{i,1}^2}{4} - \frac{\rho_{i,2}u_{i,1}^2}{12} - \frac{\rho_{i,1}u_{i,1}u_{i,2}}{6} - \frac{\rho_{i,2}u_{i,1}u_{i,2}}{6} - \frac{\rho_{i,1}u_{i,2}^2}{12} - \frac{\rho_{i,2}u_{i,2}^2}{4} = f_{i,2}.
+&\frac{\rho_{i,1}u_{i,1}^2}{4} + \frac{\rho_{i,2}u_{i,1}^2}{12} + \frac{\rho_{i,1}u_{i,1}u_{i,2}}{6} + \frac{\rho_{i,2}u_{i,1}u_{i,2}}{6} + \frac{\rho_{i,1}u_{i,2}^2}{12} + \frac{\rho_{i,2}u_{i,2}^2}{4} = f_{\rho;i,1},\\[5pt]
+\label{eq::LDFEM-MomenLHS-2}
+-&\frac{\rho_{i,1}u_{i,1}^2}{4} - \frac{\rho_{i,2}u_{i,1}^2}{12} - \frac{\rho_{i,1}u_{i,1}u_{i,2}}{6} - \frac{\rho_{i,2}u_{i,1}u_{i,2}}{6} - \frac{\rho_{i,1}u_{i,2}^2}{12} - \frac{\rho_{i,2}u_{i,2}^2}{4} + \rho_{i,2}u_{i,2}^2 = f_{\rho;i,2},
+\end{align}
+where,
+\begin{align}
+\label{eq::LDFEM-MomenRHS-1}
+f_{\rho;i,1} &= -\frac{d}{dx}P_{i,1}(\x) + \rho_{i-1,2}u_{i-1,2}^2 + \left( \rho(\x)2u(\x)\frac{d}{dx}u(\x) + \frac{d}{dx}\rho(\x)u(\x)^2 \right),\\[5pt]
+\label{eq::LDFEM-MomenRHS-2}
+f_{\rho;i,2} &= -\frac{d}{dx}P_{i,2}(\x) + \left( \rho(\x)2u(\x)\frac{d}{dx}u(\x) + \frac{d}{dx}\rho(\x)u(\x)^2 \right).
 \end{align}
 
-
+We can test for conservativeness by inserting Equation \ref{eq::MMS-Velocity} into Equations \ref{eq::LDFEM-MomenLHS-1} through \ref{eq::LDFEM-MomenRHS-2}. Since we have assumed analytic solutions, we should observe that Equations \ref{eq::LDFEM-MomenLHS-1} and \ref{eq::LDFEM-MomenRHS-1} and Equations \ref{eq::LDFEM-MomenLHS-2} and \ref{eq::LDFEM-MomenRHS-2} should be the same. Figures \ref{fig::Momen-1} and \ref{fig::Momen-2} show the that the discretized equations for Equation \ref{eq::ConsMomen} are \textbf{not} conservative.
+\begin{figure}[h!]
+\centering
+\includegraphics[scale=0.35]{./figures/Momen_1}
+\caption{Test for conservation of discretized momentum equations - left node.}
+\label{fig::Momen-1}
+\end{figure}
+\begin{figure}[h!]
+\centering
+\includegraphics[scale=0.35]{./figures/Momen_2}
+\caption{Test for conservation of discretized momentum equations - right node.}
+\label{fig::Momen-2}
+\end{figure}
 
 
 
