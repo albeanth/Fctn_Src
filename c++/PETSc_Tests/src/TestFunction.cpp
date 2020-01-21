@@ -200,5 +200,5 @@ double TestFunction::MMS_Src_Momentum(const double x){
      * source to define the MMS problem for 
      * the conservation of momentum
      */
-    return rho(x) * 2.0 * u(x) * up(x) + rhop(x) * pow(u(x), 2.0) - pressurep(x);
+    return (rho(x) * 2.0 * u(x) * up(x)) + (rhop(x) * pow(u(x), 2.0)) + (up(x));
 }

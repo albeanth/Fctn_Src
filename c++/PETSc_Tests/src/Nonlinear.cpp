@@ -119,8 +119,8 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
         }
         // compute upwind values for mass and momentum
         ctx.mass_upwind = tmp_vel * tmp_rho;
-        ctx.momen_upwind = tmp_rho * pow(tmp_vel, 2.0);
-        
+        ctx.momen_upwind = tmp_rho * pow(tmp_vel, 2.0) + tmp_vel;
+
         // VecGetValues(ctx.mass_src, 2, tmpIdx, aa);
         // VecGetValues(ctx.momen_src, 2, tmpIdx, bb);
         // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\n", aa[0], bb[0]);
@@ -225,8 +225,8 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     /* Compute function */
     ff[0] = (xx[0]*xx[2])/3.0 + (xx[0]*xx[3])/6.0 + (xx[1]*xx[2])/6.0 + (xx[1]*xx[3])/3.0 - user->mass_upwind - mass_src[0];
     ff[1] =-(xx[0]*xx[2])/3.0 - (xx[0]*xx[3])/6.0 - (xx[1]*xx[2])/6.0 - (xx[1]*xx[3])/3.0 + xx[1]*xx[3] - mass_src[1];
-    ff[2] = (xx[2]*pow(xx[0],2.0))/4.0 + (xx[3]*pow(xx[0],2.0))/12.0 + (xx[2]*xx[0]*xx[1])/6.0 + (xx[3]*xx[0]*xx[1])/6.0 + (xx[2]*pow(xx[1],2.0))/12.0 + (xx[3]*pow(xx[1],2.0))/4.0 - user->momen_upwind - momen_src[0];
-    ff[3] =-(xx[2]*pow(xx[0],2.0))/4.0 - (xx[3]*pow(xx[0],2.0))/12.0 - (xx[2]*xx[0]*xx[1])/6.0 - (xx[3]*xx[0]*xx[1])/6.0 - (xx[2]*pow(xx[1],2.0))/12.0 - (xx[3]*pow(xx[1],2.0))/4.0 + xx[3]*pow(xx[1],2.0) - momen_src[1];
+    ff[2] = 1.0/12.0 * ( pow(xx[0],2.0)*(3.0*xx[2] + xx[3]) + 2.0*xx[0]*(3.0 + xx[2]*xx[1] + xx[3]*xx[1]) + xx[1]*(6.0 + xx[2]*xx[1] + 3.0*xx[3]*xx[1]) ) - user->momen_upwind - momen_src[0];
+    ff[3] =-1.0/12.0 * ( pow(xx[0],2.0)*(3.0*xx[2] + xx[3]) + 2.0*xx[0]*(3.0 + xx[2]*xx[1] + xx[3]*xx[1]) + xx[1]*(6.0 + xx[2]*xx[1] + 3.0*xx[3]*xx[1]) ) + xx[3]*pow(xx[1],2.0) + xx[1] - momen_src[1];
 
     /* Restore vectors */
     ierr = VecRestoreArrayRead(x,&xx);CHKERRQ(ierr);
@@ -259,15 +259,15 @@ PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *dummy) {
     A[6] = -A[2];         //-xx[0]/3.0 - xx[1]/6.0;
     A[7] = -A[3] + xx[1]; //-xx[0]/6.0 - xx[1]/3.0 + xx[1];
     // over f2
-    A[8] = (2.0*xx[0]*xx[2])/4.0 + (2.0*xx[0]*xx[3])/12.0 + (xx[2]*xx[1])/6.0 + (xx[3]*xx[1])/6.0;
-    A[9] = (2.0*xx[1]*xx[3])/4.0 + (2.0*xx[1]*xx[2])/12.0 + (xx[3]*xx[0])/6.0 + (xx[2]*xx[0])/6.0;
-    A[10] = pow(xx[0], 2.0)/4.0 + (xx[0]*xx[1])/6.0 + pow(xx[1],2.0)/12.0;
-    A[11] = pow(xx[0], 2.0)/12.0 + (xx[0]*xx[1])/6.0 + pow(xx[1], 2.0)/4.0;
+    A[8] = 1.0/6.0 * (3.0 + xx[3]*(xx[0] + xx[1]) + xx[2]*(3.0*xx[0] + xx[1]));
+    A[9] = 1.0/6.0 * (3.0 + xx[2]*(xx[0] + xx[1]) + xx[3]*(xx[0] + 3.0*xx[1]));
+    A[10] = 1.0/12.0 * (3.0*pow(xx[0],2.0) + 2.0*xx[0]*xx[1] + pow(xx[1],2.0));
+    A[11] = 1.0/12.0 * (pow(xx[0],2.0) + 2.0*xx[0]*xx[1] + 3.0*pow(xx[1],2.0));
     // over f3
-    A[12] = -A[8];                     //-(2.0*xx[0]*xx[2])/4.0 - (2.0*xx[0]*xx[3])/12.0 - (xx[2]*xx[1])/6.0 - (xx[3]*xx[1])/6.0;
-    A[13] = -A[9] + 2.0*xx[1]*xx[3] ;  //-(2.0*xx[1]*xx[3])/4.0 - (2.0*xx[1]*xx[2])/12.0 - (xx[3]*xx[0])/6.0 - (xx[2]*xx[0])/6.0 + 2.0*xx[1]*xx[3];
-    A[14] = -A[10];                    //-pow(xx[0], 2.0)/4.0 - (xx[0]*xx[1])/6.0 - pow(xx[0],2.0)/12.0;
-    A[15] = -A[11] + pow(xx[1], 2.0);  //-pow(xx[0], 2.0)/12.0 - (xx[0]*xx[1])/6.0 - pow(xx[1], 2.0)/4.0 + pow(xx[1], 2.0);
+    A[12] = -A[8];
+    A[13] = -A[9] + 2.0*xx[1]*xx[3] + 1.0;
+    A[14] = -A[10];
+    A[15] = -A[11] + pow(xx[1], 2.0);
 
     /* and insert into matrix B */
     ierr = MatSetValues(B, 4, idx, 4, idx, A, INSERT_VALUES); CHKERRQ(ierr);
