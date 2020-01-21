@@ -38,6 +38,8 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         // Public Member Variables
         Vec velocity; /* global solution */
         Vec density;  /* global solution */
+        PetscScalar l2Err_Vel, l2Err_Rho; /* l2 error */
+        PetscScalar h1Err_Vel, h1Err_Rho; /* h1 error */
         // Public Member Functions
         PetscErrorCode NL_1D(int argc, char **args);
     private:
@@ -53,6 +55,7 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         // Private Member Functions
         PetscErrorCode NLSolve(const int elem);
         PetscErrorCode InitializeLocalRHSF();
+        PetscErrorCode VelRho_L2Error();
 };
 
 #endif
