@@ -14,8 +14,8 @@ void SetUpGrid::add_CFEMGrid(const int nels, const int myorder) {
    */
   printf("\nSetting up CFEM grid... ");
   info.nels = nels;
-  double hel {(info.bounds[1]-info.bounds[0])/info.nels}; // spacing of elements (uniform)
-  std::vector<double> xel {arange(info.bounds[0], info.bounds[1], hel)};
+  info.hel = (info.bounds[1]-info.bounds[0])/info.nels; // spacing of elements (uniform)
+  std::vector<double> xel {arange(info.bounds[0], info.bounds[1], info.hel)};
 
   info.order.assign(info.nels, myorder+1);
   info.maxord = *std::max_element(info.order.begin(), info.order.end());
@@ -88,8 +88,8 @@ void SetUpGrid::add_DFEMGrid(const int nels, const int myorder, const double del
   printf("\nSetting up DFEM grid... ");
   
   info.nels = nels;
-  const double hel {(info.bounds[1]-info.bounds[0])/info.nels}; // spacing of elements (uniform)
-  std::vector<double> xel {arange(info.bounds[0],info.bounds[1],hel)};
+  info.hel = (info.bounds[1]-info.bounds[0])/info.nels; // spacing of elements (uniform)
+  std::vector<double> xel {arange(info.bounds[0],info.bounds[1],info.hel)};
 
   info.order.assign(info.nels, myorder+1);
   info.maxord = {*std::max_element(info.order.begin(), info.order.end())};
