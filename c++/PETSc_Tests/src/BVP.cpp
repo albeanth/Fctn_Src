@@ -255,8 +255,6 @@ PetscErrorCode BVP::L2Error(){
       x = xL + (1.0 + qps1d.xw[l1]) * dx;
       /* evaluate basis functions */
       ierr = PetscEvalBasis1D(qps1d.xw[l1], info.order[elem], shape1d); CHKERRQ(ierr);
-      /* assign eval'd shape funcs to petsc matrices */
-      ierr = AssignEvaldBasis(dx, shape1d); CHKERRQ(ierr);
       /* evaluate known functions */
       uval = u(x);
       duval = up(x);

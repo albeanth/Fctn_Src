@@ -156,7 +156,80 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
         VecGetValues(energy, 1, &index, &tmp_efluid);
         PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\n", info.xnod[index], tmp_vel, tmp_rho, tmp_efluid, u(info.xnod[index]), rho(info.xnod[index]), efluid(info.xnod[index]) );
     }
+    /* Check numerical solution */
+    ierr = VelRho_L2Error(); CHKERRQ(ierr);
+
+    // all petsc based functions need to end with PetscFinalize()
     ierr = PetscFinalize();
+    return ierr;
+}
+
+PetscErrorCode NonLinear::VelRho_L2Error(){
+    /*
+     *  Check numerical solution for velocity and density
+     */
+    PetscPrintf(PETSC_COMM_WORLD,"\n\nneed to add in energy error information\n\n");
+    PetscScalar uval, duval, rval, drval;
+    PetscScalar uhval, duhval, rhval, drhval;
+    PetscInt mynum;
+    PetscScalar tmp_vel, tmp_rho;
+    PetscScalar tmp_b, tmp_bp;
+    l2Err_Vel = 0.0;
+    l2Err_Rho = 0.0;
+    h1Err_Rho = 0.0;
+
+    QuadParams1D qps1d;
+    get1D_QPs(info.maxord, qps1d);
+    
+    PetscShapeFunction1D shape1d;
+    ierr = VecCreate(PETSC_COMM_WORLD, &shape1d.psi); CHKERRQ(ierr);
+    ierr = VecCreate(PETSC_COMM_WORLD, &shape1d.dpsi); CHKERRQ(ierr);
+    ierr = VecSetSizes(shape1d.psi, PETSC_DECIDE, info.order[0]); CHKERRQ(ierr);
+    ierr = VecSetSizes(shape1d.dpsi, PETSC_DECIDE, info.order[0]); CHKERRQ(ierr);
+    ierr = VecSetFromOptions(shape1d.psi); CHKERRQ(ierr);
+    ierr = VecSetFromOptions(shape1d.dpsi); CHKERRQ(ierr);
+
+    double xL, xR, dx, x;
+    for (int elem = 0; elem < info.nels; elem ++){
+        xL = info.xnod[ info.nod[elem][0] ];
+        xR = info.xnod[ info.nod[elem][info.order[elem]-1] ];
+        dx = (xR-xL)/2.0;
+        for (int l1 = 0; l1 < qps1d.nw; l1++){
+            /* map from ref elem to real elem */
+            x = xL + (1.0 + qps1d.xw[l1]) * dx;
+            /* evaluate basis functions */
+            ierr = PetscEvalBasis1D(qps1d.xw[l1], info.order[elem], shape1d); CHKERRQ(ierr);
+            /* evaluate known functions */
+            uval = u(x);
+            duval = up(x);
+            rval = rho(x);
+            drval = rhop(x);
+            uhval = 0.0;
+            duhval = 0.0;
+            rhval = 0.0;
+            drhval = 0.0;
+            for (int k = 0; k < info.order[0]; k++){
+                mynum = info.nod[elem][k];
+                ierr = VecGetValues(velocity, 1, &mynum, &tmp_vel); CHKERRQ(ierr);
+                ierr = VecGetValues(density, 1, &mynum, &tmp_rho); CHKERRQ(ierr);
+                ierr = VecGetValues(shape1d.psi, 1, &k, &tmp_b); CHKERRQ(ierr);
+                ierr = VecGetValues(shape1d.dpsi, 1, &k, &tmp_bp); CHKERRQ(ierr);
+                uhval += tmp_vel * tmp_b;
+                rhval += tmp_rho * tmp_b;
+                duhval += tmp_vel * tmp_bp / dx;
+                drhval += tmp_rho * tmp_bp / dx;
+            }
+            l2Err_Vel += pow(uval - uhval, 2.0) * qps1d.w[l1] * dx;
+            l2Err_Rho += pow(rval - rhval, 2.0) * qps1d.w[l1] * dx;
+            h1Err_Vel += pow(duval - duhval, 2.0) * qps1d.w[l1] * dx;
+            h1Err_Rho += pow(drval - drhval, 2.0) * qps1d.w[l1] * dx;
+        }
+    }
+    l2Err_Vel = sqrt(l2Err_Vel);
+    l2Err_Rho = sqrt(l2Err_Rho);
+    h1Err_Vel = sqrt(l2Err_Vel + h1Err_Vel);
+    h1Err_Rho = sqrt(l2Err_Rho + h1Err_Rho);
+    PetscPrintf(PETSC_COMM_WORLD, "%.8e\t%.8e\t%.8e\t\t%.8e\t%.8e\n", info.hel, l2Err_Vel, l2Err_Rho, h1Err_Vel, h1Err_Rho);
     return ierr;
 }
 
