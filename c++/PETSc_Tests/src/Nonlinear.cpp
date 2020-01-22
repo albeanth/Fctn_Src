@@ -169,14 +169,17 @@ PetscErrorCode NonLinear::VelRho_L2Error(){
      *  Check numerical solution for velocity and density
      */
     PetscPrintf(PETSC_COMM_WORLD,"\n\nneed to add in energy error information\n\n");
-    PetscScalar uval, duval, rval, drval;
-    PetscScalar uhval, duhval, rhval, drhval;
+    PetscScalar uval, duval, rval, drval, eval, deval;
+    PetscScalar uhval, duhval, rhval, drhval, ehval, dehval;
     PetscInt mynum;
-    PetscScalar tmp_vel, tmp_rho;
+    PetscScalar tmp_vel, tmp_rho, tmp_em;
     PetscScalar tmp_b, tmp_bp;
     l2Err_Vel = 0.0;
     l2Err_Rho = 0.0;
+    l2Err_Em = 0.0;
+    h1Err_Vel = 0.0;
     h1Err_Rho = 0.0;
+    h1Err_Em = 0.0;
 
     QuadParams1D qps1d;
     get1D_QPs(info.maxord, qps1d);
@@ -204,32 +207,43 @@ PetscErrorCode NonLinear::VelRho_L2Error(){
             duval = up(x);
             rval = rho(x);
             drval = rhop(x);
+            eval = efluid(x);
+            deval = efluidp(x);
             uhval = 0.0;
             duhval = 0.0;
             rhval = 0.0;
             drhval = 0.0;
+            ehval = 0.0;
+            dehval = 0.0;
             for (int k = 0; k < info.order[0]; k++){
                 mynum = info.nod[elem][k];
                 ierr = VecGetValues(velocity, 1, &mynum, &tmp_vel); CHKERRQ(ierr);
                 ierr = VecGetValues(density, 1, &mynum, &tmp_rho); CHKERRQ(ierr);
+                ierr = VecGetValues(energy, 1, &mynum, &tmp_em); CHKERRQ(ierr);
                 ierr = VecGetValues(shape1d.psi, 1, &k, &tmp_b); CHKERRQ(ierr);
                 ierr = VecGetValues(shape1d.dpsi, 1, &k, &tmp_bp); CHKERRQ(ierr);
                 uhval += tmp_vel * tmp_b;
                 rhval += tmp_rho * tmp_b;
+                ehval += tmp_em * tmp_b;
                 duhval += tmp_vel * tmp_bp / dx;
                 drhval += tmp_rho * tmp_bp / dx;
+                dehval += tmp_em * tmp_bp / dx;
             }
             l2Err_Vel += pow(uval - uhval, 2.0) * qps1d.w[l1] * dx;
             l2Err_Rho += pow(rval - rhval, 2.0) * qps1d.w[l1] * dx;
+            l2Err_Em += pow(eval - ehval, 2.0) * qps1d.w[l1] * dx;
             h1Err_Vel += pow(duval - duhval, 2.0) * qps1d.w[l1] * dx;
             h1Err_Rho += pow(drval - drhval, 2.0) * qps1d.w[l1] * dx;
+            h1Err_Em += pow(deval - dehval, 2.0) * qps1d.w[l1] * dx;
         }
     }
     l2Err_Vel = sqrt(l2Err_Vel);
     l2Err_Rho = sqrt(l2Err_Rho);
+    l2Err_Em = sqrt(l2Err_Em);
     h1Err_Vel = sqrt(l2Err_Vel + h1Err_Vel);
     h1Err_Rho = sqrt(l2Err_Rho + h1Err_Rho);
-    PetscPrintf(PETSC_COMM_WORLD, "%.8e\t%.8e\t%.8e\t\t%.8e\t%.8e\n", info.hel, l2Err_Vel, l2Err_Rho, h1Err_Vel, h1Err_Rho);
+    h1Err_Em = sqrt(l2Err_Em + h1Err_Em);
+    PetscPrintf(PETSC_COMM_WORLD, "%.8e\t%.8e\t%.8e\t%.8e\t\t%.8e\t%.8e\t%.8e\n", info.hel, l2Err_Vel, l2Err_Rho, l2Err_Em, h1Err_Vel, h1Err_Rho, h1Err_Em);
     return ierr;
 }
 

@@ -42,8 +42,8 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         Vec velocity; /* global solution */
         Vec density;  /* global solution */
         Vec energy;  /* global solution */
-        PetscScalar l2Err_Vel, l2Err_Rho; /* l2 error */
-        PetscScalar h1Err_Vel, h1Err_Rho; /* h1 error */
+        PetscScalar l2Err_Vel, l2Err_Rho, l2Err_Em; /* l2 error */
+        PetscScalar h1Err_Vel, h1Err_Rho, h1Err_Em; /* h1 error */
         // Public Member Functions
         PetscErrorCode NL_1D(int argc, char **args);
     private:
