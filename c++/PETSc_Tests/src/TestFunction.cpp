@@ -200,7 +200,7 @@ double TestFunction::MMS_Src_Momentum(const double x){
      * source to define the MMS problem for 
      * the conservation of momentum
      */
-    return ( (rho(x) * 2.0 * u(x) * up(x) + rhop(x) * pow(u(x), 2.0)) + (gamma_s * efluidp(x)) );
+    return rho(x)*2.0*u(x)*up(x) + rhop(x)*pow(u(x),2.0) + gamma_s*efluidp(x);
 }
 
 double TestFunction::MMS_Src_Energy(const double x) {
@@ -208,5 +208,5 @@ double TestFunction::MMS_Src_Energy(const double x) {
    * source to define the MMS problem for
    * the conservation of momentum
    */
-  return ( (1.0+gamma_s) * (u(x)*efluidp(x) + up(x)*efluid(x)) + 1.0/2.0*(rho(x)*3.0*pow(u(x),2.0)*up(x) + rhop(x)*pow(u(x),3.0)) );
+  return 1.0/2.0*(rhop(x)*pow(u(x),3.0) + rho(x)*3.0*pow(u(x),2.0)*up(x)) + (1.0+gamma_s)*(up(x)*efluid(x) + u(x)*efluidp(x));
 }

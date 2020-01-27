@@ -132,10 +132,8 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
         }
         // compute upwind values for mass and momentum
         ctx.mass_upwind = tmp_vel * tmp_rho;
-        ctx.momen_upwind_i = tmp_rho * pow(tmp_vel, 2.0);
-        ctx.momen_upwind_ii = tmp_efluid;
-        ctx.energy_upwind_i = tmp_rho * pow(tmp_vel, 3.0);
-        ctx.energy_upwind_ii = tmp_vel * tmp_efluid;
+        ctx.momen_upwind = tmp_rho * pow(tmp_vel, 2.0) + ctx.gamma_s * tmp_efluid;
+        ctx.energy_upwind = 1.0/2.0 * tmp_rho * pow(tmp_vel, 3.0) + (1.0+ctx.gamma_s) * tmp_vel * tmp_efluid;
         
         // VecGetValues(ctx.mass_src, 2, tmpIdx, aa);
         // VecGetValues(ctx.momen_src, 2, tmpIdx, bb);
@@ -285,9 +283,9 @@ PetscErrorCode NonLinear::NLSolve(const int elem){
     ierr = VecSetValue(density, el+1, value[3], INSERT_VALUES); CHKERRQ(ierr);
     ierr = VecSetValue(energy, el, value[4], INSERT_VALUES); CHKERRQ(ierr);
     ierr = VecSetValue(energy, el+1, value[5], INSERT_VALUES); CHKERRQ(ierr);
-    // PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\n", info.xnod[el], value[0], value[2], value[4]);
-    // PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\n", info.xnod[el+1], value[1], value[3], value[5]);
-    // exit(-1);
+    PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\n", info.xnod[el], value[0], value[2], value[4]);
+    PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\n", info.xnod[el+1], value[1], value[3], value[5]);
+    exit(-1);
     return ierr;
 }
 
@@ -340,19 +338,13 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     ff[0] = (xx[0]*xx[2])/3.0 + (xx[0]*xx[3])/6.0 + (xx[1]*xx[2])/6.0 + (xx[1]*xx[3])/3.0 - user->mass_upwind - mass_src[0];
     ff[1] =-(xx[0]*xx[2])/3.0 - (xx[0]*xx[3])/6.0 - (xx[1]*xx[2])/6.0 - (xx[1]*xx[3])/3.0 + xx[1]*xx[3] - mass_src[1];
     // Conservation of Momentum
-    ff[2] = (xx[2]*pow(xx[0],2.0))/4.0 + (xx[3]*pow(xx[0],2.0))/12.0 + (xx[2]*xx[0]*xx[1])/6.0 + (xx[3]*xx[0]*xx[1])/6.0 + (xx[2]*pow(xx[1],2.0))/12.0 + (xx[3]*pow(xx[1],2.0))/4.0 - user->momen_upwind_i
-            + user->gamma_s*(-user->momen_upwind_ii + xx[4]/2.0 + xx[5]/2.0)
-            - momen_src[0];
-    ff[3] =-(xx[2]*pow(xx[0],2.0))/4.0 - (xx[3]*pow(xx[0],2.0))/12.0 - (xx[2]*xx[0]*xx[1])/6.0 - (xx[3]*xx[0]*xx[1])/6.0 - (xx[2]*pow(xx[1],2.0))/12.0 - (xx[3]*pow(xx[1],2.0))/4.0 + xx[3]*pow(xx[1],2.0) 
-            + user->gamma_s*(xx[5] - xx[4]/2.0 - xx[5]/2.0)
-            - momen_src[1];
+    ff[2] = 1.0/12.0 * ( 6.0*xx[4]*user->gamma_s + 6.0*xx[5]*user->gamma_s + 3.0*xx[2]*pow(xx[0],2.0) + xx[3]*pow(xx[0],2.0) + 2.0*xx[2]*xx[0]*xx[1] + 2.0*xx[3]*xx[0]*xx[1] + xx[2]*pow(xx[1],2.0) + 3.0*xx[3]*pow(xx[1],2.0) ) - user->momen_upwind - momen_src[0];
+    ff[3] =-1.0/12.0 * ( 6.0*xx[4]*user->gamma_s + 6.0*xx[5]*user->gamma_s + 3.0*xx[2]*pow(xx[0],2.0) + xx[3]*pow(xx[0],2.0) + 2.0*xx[2]*xx[0]*xx[1] + 2.0*xx[3]*xx[0]*xx[1] + xx[2]*pow(xx[1],2.0) + 3.0*xx[3]*pow(xx[1],2.0) ) + xx[3]*pow(xx[1],2.0) + user->gamma_s*xx[5] - momen_src[1];
     // Conservation of Energy
-    ff[4] = 1.0/40.0 * (xx[2] * (4.0*pow(xx[0],3.0) + 3.0*pow(xx[0],2.0)*xx[1] + 2.0*xx[0]*pow(xx[1],2.0) + pow(xx[1],3.0)) + xx[3] * (pow(xx[0],3.0) + 2.0*pow(xx[0],2.0)*xx[1] + 3.0*xx[0]*pow(xx[1],2.0) + 4.0*pow(xx[1],3.0)) ) - user->energy_upwind_i/2.0
-            + ( 1.0 + user->gamma_s) * ( -user->energy_upwind_ii + xx[4]*xx[0]/3.0 + xx[5]*xx[0]/6.0 + xx[4]*xx[1]/6.0 + xx[5]*xx[1]/3.0 )
-            - efluid_src[0];
-    ff[5] =-1.0/40.0 * (xx[2] * (4.0*pow(xx[0],3.0) + 3.0*pow(xx[0],2.0)*xx[1] + 2.0*xx[0]*pow(xx[1],2.0) + pow(xx[1],3.0)) + xx[3] * (pow(xx[0],3.0) + 2.0*pow(xx[0],2.0)*xx[1] + 3.0*xx[0]*pow(xx[1],2.0) + 4.0*pow(xx[1],3.0)) ) + xx[3]*pow(xx[1],3.0)/2.0
-            + (1.0 + user->gamma_s) * ( xx[1]*xx[5] - xx[4]*xx[0]/3.0 - xx[5]*xx[0]/6.0 - xx[4]*xx[1]/6.0 - xx[5]*xx[1]/3.0 )
-            - efluid_src[1];
+    ff[4] = 1.0/120.0 * ( 20.0*xx[4]*(1+user->gamma_s)*(2*xx[0]+xx[1]) + 20.0*xx[5]*(1+user->gamma_s)*(xx[0]+2.0*xx[1]) + 3.0*xx[2]*(4.0*pow(xx[0],3.0) + 3.0*pow(xx[0],2.0)*xx[1] + 2.0*xx[0]*pow(xx[1],2.0) + pow(xx[1],3.0)) + 3.0*xx[3]*(pow(xx[0],3.0) + 2.0*pow(xx[0],2.0)*xx[1] + 3.0*xx[0]*pow(xx[1],2.0) + 4.0*pow(xx[1],3.0)) )
+            - user->energy_upwind - efluid_src[0];
+    ff[5] =-1.0/120.0 * ( 20.0*xx[4]*(1+user->gamma_s)*(2*xx[0]+xx[1]) + 20.0*xx[5]*(1+user->gamma_s)*(xx[0]+2.0*xx[1]) + 3.0*xx[2]*(4.0*pow(xx[0],3.0) + 3.0*pow(xx[0],2.0)*xx[1] + 2.0*xx[0]*pow(xx[1],2.0) + pow(xx[1],3.0)) + 3.0*xx[3]*(pow(xx[0],3.0) + 2.0*pow(xx[0],2.0)*xx[1] + 3.0*xx[0]*pow(xx[1],2.0) + 4.0*pow(xx[1],3.0)) )
+            + 1.0/2.0*xx[3]*pow(xx[1],3.0) + (1.0+user->gamma_s)*xx[1]*xx[5] - efluid_src[1];
 
     /* Restore vectors */
     ierr = VecRestoreArrayRead(x,&xx);CHKERRQ(ierr);
@@ -395,27 +387,27 @@ PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx) {
     A[11] = 0.0;
     /* Conservation of Momentum */
     // over f2
-    A[12] = (xx[0]*xx[2])/2.0 + (xx[0]*xx[3])/6.0 + (xx[2]*xx[1])/6.0 + (xx[3]*xx[1])/6.0;
-    A[13] = (xx[1]*xx[3])/2.0 + (xx[1]*xx[2])/6.0 + (xx[3]*xx[0])/6.0 + (xx[2]*xx[0])/6.0;
-    A[14] = pow(xx[0], 2.0)/4.0 + (xx[0]*xx[1])/6.0 + pow(xx[1],2.0)/12.0;
-    A[15] = pow(xx[0], 2.0)/12.0 + (xx[0]*xx[1])/6.0 + pow(xx[1], 2.0)/4.0;
-    A[16] = user->gamma_s/2.0;
-    A[17] = user->gamma_s/2.0;
+    A[12] = 1.0/6.0 * ( xx[3]*(xx[0]+xx[1]) + xx[2]*(3.0*xx[0]+xx[1]) );
+    A[13] = 1.0/6.0 * ( xx[2]*(xx[0]+xx[1]) + xx[3]*(xx[0]+3.0*xx[1]) );
+    A[14] = 1/12.0 * ( 3.0*pow(xx[0],2.0) + 2.0*xx[0]*xx[1] + pow(xx[1],2.0) );
+    A[15] = 1/12.0 * ( pow(xx[0],2.0) + 2.0*xx[0]*xx[1] + 3.0*pow(xx[1],2.0) );
+    A[16] = user->gamma_s / 2.0;
+    A[17] = user->gamma_s / 2.0;
     // over f3
-    A[18] = -A[12];                   
+    A[18] = -A[12];
     A[19] = -A[13] + 2.0*xx[1]*xx[3];
-    A[20] = -A[14];                  
+    A[20] = -A[14];
     A[21] = -A[15] + pow(xx[1], 2.0);
     A[22] = -A[16];
-    A[23] = -A[17];
+    A[23] = -A[17] + user->gamma_s;
     /* Conservation of Energy */
     // over f4
-    A[24] = 1.0/40.0 * (xx[2]*(12.0*pow(xx[0],2.0) + 6.0*xx[0]*xx[1] + 2.0*pow(xx[1],2.0)) + xx[3]*(3.0*pow(xx[0],2.0) + 4.0*xx[0]*xx[1] + 3.0*pow(xx[1],2.0)) ) + (1.0 + user->gamma_s) * (xx[4]/3.0 + xx[5]/6.0);
-    A[25] = 1.0/40.0 * (xx[2]*(3.0*pow(xx[0],2.0) + 4.0*xx[0]*xx[1] + 3.0*pow(xx[1],2.0)) + xx[3]*(2.0*pow(xx[0],2.0) + 6.0*xx[0]*xx[1] + 12.0*pow(xx[1],2.0)) ) + (1.0 + user->gamma_s) * (xx[4]/6.0 + xx[5]/3.0);
-    A[26] = 1.0/40.0 * (4.0*pow(xx[0],3.0) + 3.0*pow(xx[0],2.0)*xx[1] + 2.0*xx[0]*pow(xx[1],2.0) + pow(xx[1],3.0) );
-    A[27] = 1.0/40.0 * (pow(xx[0],3.0) + 2.0*pow(xx[0],2.0)*xx[1] + 3.0*xx[0]*pow(xx[1],2.0) + 4.0*pow(xx[1],3.0) );
-    A[28] = (1.0 + user->gamma_s) * (xx[0]/3.0 + xx[1]/6.0);
-    A[29] = (1.0 + user->gamma_s) * (xx[0]/6.0 + xx[1]/3.0);
+    A[24] = 1.0/120.0 * (40.0*xx[4]*(1.0+user->gamma_s) + 20.0*xx[5]*(1.0+user->gamma_s) + 6.0*xx[2]*(6.0*pow(xx[0],2.0) + 3.0*xx[0]*xx[1] + pow(xx[1],2.0)) + 3.0*xx[3]*(3.0*pow(xx[0],2.0) + 4.0*xx[0]*xx[1] + 3.0*pow(xx[1],2.0)) );
+    A[25] = 1.0/120.0 * (20.0*xx[4]*(1.0+user->gamma_s) + 40.0*xx[5]*(1.0+user->gamma_s) + 3.0*xx[2]*(3.0*pow(xx[0],2.0) + 4.0*xx[0]*xx[1] + 3.0*pow(xx[1],2.0)) + 6.0*xx[3]*(pow(xx[0],2.0) + 3.0*xx[0]*xx[1] + 6.0*pow(xx[1],2.0)) );
+    A[26] = 1.0/40.0 * (4.0*pow(xx[0],3.0) + 3.0*pow(xx[0],2.0)*xx[1] + 2.0*xx[0]*pow(xx[1],2.0) + pow(xx[1],3.0));
+    A[27] = 1.0/40.0 * (pow(xx[0],3.0) + 2.0*pow(xx[0],2.0)*xx[1] + 3.0*xx[0]*pow(xx[1],2.0) + 4.0*pow(xx[1],3.0));
+    A[28] = 1.0/6.0 * (1.0+user->gamma_s) * (2.0*xx[0] + xx[1]);
+    A[29] = 1.0/6.0 * (1.0+user->gamma_s) * (xx[0] + 2.0*xx[1]);
     // over f5
     A[30] = -A[24];
     A[31] = -A[25] + (3.0*pow(xx[1],2.0)*xx[3])/2.0 + (1.0 + user->gamma_s) * xx[5];
