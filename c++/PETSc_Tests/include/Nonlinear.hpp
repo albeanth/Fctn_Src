@@ -57,7 +57,7 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         KSP ksp;                /* linear solver context */
         PC pc;                  /* preconditioner context */
         // Private Member Functions
-        PetscErrorCode NLSolve(const int elem);
+        PetscErrorCode NLSolve(const int elem, PetscScalar vL, PetscScalar vR, PetscScalar rL, PetscScalar rR, PetscScalar eL, PetscScalar eR);
         PetscErrorCode InitializeLocalRHSF();
         PetscErrorCode VelRho_L2Error();
 };

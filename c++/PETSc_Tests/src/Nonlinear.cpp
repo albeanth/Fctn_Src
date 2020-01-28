@@ -143,7 +143,13 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
         // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\n", aa[1], bb[1], cc[1]);
 
         /* Solve nonlinear system of equations over elem */
-        ierr = NLSolve(elem); CHKERRQ(ierr);
+        PetscScalar vL = u(xL);
+        PetscScalar vR = u(xR);
+        PetscScalar rL = rho(xL);
+        PetscScalar rR = rho(xR);
+        PetscScalar eL = efluid(xL);
+        PetscScalar eR = efluid(xR);
+        ierr = NLSolve(elem, vL, vR, rL, rR, eL, eR); CHKERRQ(ierr);
         /* set vector entries equal to zero (while maintaining structure) */
         ierr = InitializeLocalRHSF(); CHKERRQ(ierr);
     }
@@ -262,12 +268,21 @@ PetscErrorCode NonLinear::InitializeLocalRHSF(){
     return ierr;
 }
 
-PetscErrorCode NonLinear::NLSolve(const int elem){
+PetscErrorCode NonLinear::NLSolve(const int elem, PetscScalar vL, PetscScalar vR, PetscScalar rL, PetscScalar rR, PetscScalar eL, PetscScalar eR){
     /*
      *  create nonlinear solver context and solve equations
      */
     /* Set initial guess */
-    ierr = VecSet(x, 1.0);CHKERRQ(ierr);
+    // ierr = VecSet(x, 1.0);CHKERRQ(ierr);
+    // Mass
+    ierr = VecSetValue(x, 0, vL, INSERT_VALUES);CHKERRQ(ierr);
+    ierr = VecSetValue(x, 1, vR, INSERT_VALUES);CHKERRQ(ierr);
+    // Momentum
+    ierr = VecSetValue(x, 2, rL, INSERT_VALUES);CHKERRQ(ierr);
+    ierr = VecSetValue(x, 3, rR, INSERT_VALUES);CHKERRQ(ierr);
+    // Energy
+    ierr = VecSetValue(x, 4, eL, INSERT_VALUES);CHKERRQ(ierr);
+    ierr = VecSetValue(x, 5, eR, INSERT_VALUES);CHKERRQ(ierr);
 
     /* Solve nonlinear system */
     ierr = SNESSolve(snes, NULL, x); CHKERRQ(ierr);
@@ -284,9 +299,9 @@ PetscErrorCode NonLinear::NLSolve(const int elem){
     ierr = VecSetValue(density, el+1, value[3], INSERT_VALUES); CHKERRQ(ierr);
     ierr = VecSetValue(energy, el, value[4], INSERT_VALUES); CHKERRQ(ierr);
     ierr = VecSetValue(energy, el+1, value[5], INSERT_VALUES); CHKERRQ(ierr);
-    PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\n", info.xnod[el], value[0], value[2], value[4]);
-    PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\n", info.xnod[el+1], value[1], value[3], value[5]);
-    exit(-1);
+    // PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\n", info.xnod[el], value[0], value[2], value[4]);
+    // PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\n", info.xnod[el+1], value[1], value[3], value[5]);
+    // exit(-1);
     return ierr;
 }
 
