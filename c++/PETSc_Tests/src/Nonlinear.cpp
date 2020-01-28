@@ -42,8 +42,9 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
      */
     // set linear solver defaults for the problem
     ierr = SNESGetKSP(snes,&ksp);CHKERRQ(ierr);
+    ierr = KSPSetType(ksp, KSPGMRES); CHKERRQ(ierr);
     ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
-    ierr = PCSetType(pc, PCNONE); CHKERRQ(ierr);
+    ierr = PCSetType(pc, PCILU); CHKERRQ(ierr);
     ierr = KSPSetTolerances(ksp, 1e-12, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
     // set runtime options THESE WILL OVERRIDE THE ABOVE THREE COMMANDS
     ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
