@@ -139,7 +139,7 @@ double TestFunction::efluidp(const double x){
     val = 2.0 * x;
   }
   else if (selection == 101){
-    val = 3.0 * x;
+    val = 3.0 * pow(x, 2.0);
   }
   return val;
 }
