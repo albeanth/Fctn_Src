@@ -143,12 +143,12 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
         // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\n", aa[1], bb[1], cc[1]);
 
         /* Solve nonlinear system of equations over elem */
-        PetscScalar vL = u(xL);
-        PetscScalar vR = u(xR);
-        PetscScalar rL = rho(xL);
-        PetscScalar rR = rho(xR);
-        PetscScalar eL = efluid(xL);
-        PetscScalar eR = efluid(xR);
+        PetscScalar vL = tmp_vel;    //u(xL);
+        PetscScalar vR = vL - dx;    //u(xR);
+        PetscScalar rL = tmp_rho;    //rho(xL);
+        PetscScalar rR = rL + dx;    //rho(xR);
+        PetscScalar eL = tmp_efluid; //efluid(xL);
+        PetscScalar eR = eL + dx;    //efluid(xR);
         ierr = NLSolve(elem, vL, vR, rL, rR, eL, eR); CHKERRQ(ierr);
         /* set vector entries equal to zero (while maintaining structure) */
         ierr = InitializeLocalRHSF(); CHKERRQ(ierr);
