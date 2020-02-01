@@ -15,7 +15,7 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
     ierr = SNESCreate(PETSC_COMM_WORLD, &snes); CHKERRQ(ierr);
     // create vectors for solution and residual
     ierr = VecCreate(PETSC_COMM_WORLD, &x); CHKERRQ(ierr);
-    ierr = VecSetSizes(x, PETSC_DECIDE, 6); CHKERRQ(ierr);
+    ierr = VecSetSizes(x, PETSC_DECIDE, info.nnodes*3); CHKERRQ(ierr);
     ierr = VecSetFromOptions(x); CHKERRQ(ierr);
     ierr = VecDuplicate(x, &r); CHKERRQ(ierr);
     /*
@@ -27,7 +27,7 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
      */
     // create Jacobian matrix data structure
     ierr = MatCreate(PETSC_COMM_WORLD,&J);CHKERRQ(ierr);
-    ierr = MatSetSizes(J,PETSC_DECIDE,PETSC_DECIDE,6,6);CHKERRQ(ierr);
+    ierr = MatSetSizes(J,PETSC_DECIDE,PETSC_DECIDE,info.nnodes*3,info.nnodes*3);CHKERRQ(ierr);
     ierr = MatSetFromOptions(J);CHKERRQ(ierr);
     ierr = MatSetUp(J);CHKERRQ(ierr);
     // set function evaluation routing and vector
@@ -76,25 +76,67 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
     ierr = VecAssemblyBegin(energy); CHKERRQ(ierr);
     ierr = VecAssemblyEnd(energy); CHKERRQ(ierr);
 
-    QuadParams1D qps1d;
-    get1D_QPs(info.maxord, qps1d);
+    /* Initialize vectors to store evaluations for integrals */
+    ierr = VecCreate(PETSC_COMM_WORLD, &mass_basis.i); CHKERRQ(ierr);
+    ierr = VecSetSizes(mass_basis.i, PETSC_DECIDE, info.order[0]); CHKERRQ(ierr);
+    ierr = VecSetFromOptions(mass_basis.i); CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &mass_basis.ii);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &mass_basis.iii);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &mass_basis.iv);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &momen_basis.i);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &momen_basis.ii);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &momen_basis.iii);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &momen_basis.iv);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &momen_basis.v);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &momen_basis.vi);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &momen_basis.vii);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &momen_basis.viii);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &efluid_basis.i);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &efluid_basis.ii);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &efluid_basis.iii);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &efluid_basis.iv);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &efluid_basis.v);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &efluid_basis.vi);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &efluid_basis.vii);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &efluid_basis.viii);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &efluid_basis.ix);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &efluid_basis.x);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &efluid_basis.xi);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &efluid_basis.xii);CHKERRQ(ierr);
+    
+    ierr = VecDuplicate(mass_basis.i, &ctx.mass_i);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.mass_ii);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.mass_iii);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.mass_iv);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.momen_i);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.momen_ii);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.momen_iii);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.momen_iv);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.momen_v);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.momen_vi);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.momen_vii);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.momen_viii);CHKERRQ(ierr);
 
-    PetscShapeFunction1D shape1d;
-    Vec MomenEvaldShape, EnergyEvaldShape;
-    ierr = VecCreate(PETSC_COMM_WORLD, &shape1d.psi); CHKERRQ(ierr);
-    ierr = VecCreate(PETSC_COMM_WORLD, &shape1d.dpsi); CHKERRQ(ierr);
-    ierr = VecSetSizes(shape1d.psi, PETSC_DECIDE, info.order[0]); CHKERRQ(ierr);
-    ierr = VecSetSizes(shape1d.dpsi, PETSC_DECIDE, info.order[0]); CHKERRQ(ierr);
-    ierr = VecSetFromOptions(shape1d.psi); CHKERRQ(ierr);
-    ierr = VecSetFromOptions(shape1d.dpsi); CHKERRQ(ierr);
-    ierr = VecDuplicate(shape1d.psi, &MomenEvaldShape);CHKERRQ(ierr);
-    ierr = VecDuplicate(shape1d.psi, &EnergyEvaldShape);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.efluid_i);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.efluid_ii);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.efluid_iii);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.efluid_iv);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.efluid_v);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.efluid_vi);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.efluid_vii);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.efluid_viii);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.efluid_ix);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.efluid_x);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.efluid_xi);CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis.i, &ctx.efluid_xii);CHKERRQ(ierr);
+
+    get1D_QPs(info.maxord, qps1d); // set qps
 
     PetscScalar src_mass, src_momen, src_energy;
     double xL, xR, dx, x;
     PetscScalar tmp_vel, tmp_rho, tmp_efluid;
-    // PetscScalar aa[2], bb[2], cc[2];
-    // PetscInt tmpIdx[2] = {0, 1};
+    PetscScalar aa[2], bb[2], cc[2], dd[2], ee[2], ff[2], gg[2], hh[2];
+    PetscInt tmpIdx[2] = {0, 1};
     /* Sweep over elements and solve */
     for (int elem = 0; elem < info.nels; elem ++){
         xL = info.xnod[ info.nod[elem][0] ];
@@ -105,20 +147,88 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
             /* map from ref elem to real elem */
             x = xL + (1.0 + qps1d.xw[l1]) * dx;
             /* evaluate basis functions */
-            ierr = PetscEvalBasis1D(qps1d.xw[l1], info.order[elem], shape1d); CHKERRQ(ierr);CHKERRQ(ierr);
-            ierr = VecCopy(shape1d.psi, MomenEvaldShape);CHKERRQ(ierr);
-            ierr = VecCopy(shape1d.psi, EnergyEvaldShape);CHKERRQ(ierr);
+            ierr = EvalBasis(qps1d.xw[l1], info.order[elem]); CHKERRQ(ierr);
             /* evaluate known functions and integrate */
             src_mass = MMS_Src_Mass(x);
             src_momen = MMS_Src_Momentum(x);
             src_energy = MMS_Src_Energy(x);
-            ierr = VecScale(shape1d.psi, src_mass * qps1d.w[l1] * dx); CHKERRQ(ierr);
-            ierr = VecScale(MomenEvaldShape, src_momen * qps1d.w[l1] * dx); CHKERRQ(ierr);
-            ierr = VecScale(EnergyEvaldShape, src_energy * qps1d.w[l1] * dx); CHKERRQ(ierr);
-            ierr = VecAXPY(ctx.mass_src, 1.0, shape1d.psi); CHKERRQ(ierr);
-            ierr = VecAXPY(ctx.momen_src, 1.0, MomenEvaldShape); CHKERRQ(ierr);
-            ierr = VecAXPY(ctx.energy_src, 1.0, EnergyEvaldShape); CHKERRQ(ierr);
+            // conservation of mass
+            ierr = VecScale(mass_basis.i, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(mass_basis.ii, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(mass_basis.iii, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(mass_basis.iv, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.mass_i, 1.0, mass_basis.i); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.mass_ii, 1.0, mass_basis.ii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.mass_iii, 1.0, mass_basis.iii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.mass_iv, 1.0, mass_basis.iv); CHKERRQ(ierr);
+            // conservation of momentum
+            ierr = VecScale(momen_basis.i, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(momen_basis.ii, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(momen_basis.iii, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(momen_basis.iv, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(momen_basis.v, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(momen_basis.vi, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(momen_basis.vii, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(momen_basis.viii, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.momen_i, 1.0, momen_basis.i); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.momen_ii, 1.0, momen_basis.ii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.momen_iii, 1.0, momen_basis.iii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.momen_iv, 1.0, momen_basis.iv); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.momen_v, 1.0, momen_basis.v); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.momen_vi, 1.0, momen_basis.vi); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.momen_vii, 1.0, momen_basis.vii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.momen_viii, 1.0, momen_basis.vii); CHKERRQ(ierr);
+            // conservation of energy
+            ierr = VecScale(efluid_basis.i, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(efluid_basis.ii, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(efluid_basis.iii, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(efluid_basis.iv, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(efluid_basis.v, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(efluid_basis.vi, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(efluid_basis.vii, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(efluid_basis.viii, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(efluid_basis.ix, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(efluid_basis.x, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(efluid_basis.xi, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecScale(efluid_basis.xii, qps1d.w[l1] * dx); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.efluid_i, 1.0, efluid_basis.i); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.efluid_ii, 1.0, efluid_basis.ii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.efluid_iii, 1.0, efluid_basis.iii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.efluid_iv, 1.0, efluid_basis.iv); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.efluid_v, 1.0, efluid_basis.v); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.efluid_vi, 1.0, efluid_basis.vi); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.efluid_vii, 1.0, efluid_basis.vii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.efluid_viii, 1.0, efluid_basis.viii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.efluid_ix, 1.0, efluid_basis.ix); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.efluid_x, 1.0, efluid_basis.x); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.efluid_xi, 1.0, efluid_basis.xi); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.efluid_xii, 1.0, efluid_basis.xii); CHKERRQ(ierr);
         }
+        VecGetValues(ctx.mass_i, 2, tmpIdx, aa);
+        VecGetValues(ctx.mass_ii, 2, tmpIdx, bb);
+        VecGetValues(ctx.mass_iii, 2, tmpIdx, cc);
+        PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\n", aa[0], bb[0], cc[0]);
+        PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\n\n", aa[1], bb[1], cc[1]);
+        VecGetValues(ctx.momen_i, 2, tmpIdx, aa);
+        VecGetValues(ctx.momen_ii, 2, tmpIdx, bb);
+        VecGetValues(ctx.momen_iv, 2, tmpIdx, cc);
+        VecGetValues(ctx.momen_vi, 2, tmpIdx, dd);
+        VecGetValues(ctx.momen_vii, 2, tmpIdx, ee);
+        VecGetValues(ctx.momen_viii, 2, tmpIdx, ff);
+        PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\n", aa[0], bb[0], cc[0], dd[0], ee[0], ff[0]);
+        PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\n\n", aa[1], bb[1], cc[1], dd[1], ee[1], ff[1]);
+        VecGetValues(ctx.efluid_i, 2, tmpIdx, aa);
+        VecGetValues(ctx.efluid_ii, 2, tmpIdx, bb);
+        VecGetValues(ctx.efluid_iv, 2, tmpIdx, cc);
+        VecGetValues(ctx.efluid_vi, 2, tmpIdx, dd);
+        VecGetValues(ctx.efluid_viii, 2, tmpIdx, ee);
+        VecGetValues(ctx.efluid_ix, 2, tmpIdx, ff);
+        VecGetValues(ctx.efluid_x, 2, tmpIdx, gg);
+        VecGetValues(ctx.efluid_xii, 2, tmpIdx, hh);
+        PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\n", aa[0], bb[0], cc[0], dd[0], ee[0], ff[0], gg[0], hh[0]);
+        PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\n\n", aa[1], bb[1], cc[1], dd[1], ee[1], ff[1], gg[1], hh[1]);
+        exit(-1);
+
         /* get upwind info */
         if (elem == 0) { // use BC info
           tmp_vel = u(info.bounds[0]);
@@ -166,6 +276,105 @@ PetscErrorCode NonLinear::NL_1D(int argc, char **args){
 
     // all petsc based functions need to end with PetscFinalize()
     ierr = PetscFinalize();
+    return ierr;
+}
+
+PetscErrorCode NonLinear::EvalBasis(const double x, const int ord){
+    /* 
+     *  - evaluates basis functions for FEM integrals. 
+     *  - basis functions are defined on [-1,1]
+     */
+    if (ord == 2){
+        PetscInt idx[2] = {0,1};
+        PetscScalar b1, b1p, b2, b2p;
+        // basis function evaluation
+        b1 = 0.5 * (1.0 - x);
+        b2 = 0.5 * (1.0 + x);
+        b1p =-0.5;
+        b2p = 0.5;
+        // conservation of mass integral evaluation
+        PetscScalar i[2], ii[2], iii[2], iv[2];
+        i[0] = pow(b1,2.0)*b1p;
+        i[1] = pow(b1,2.0)*b2p;
+        ii[0] = b1*b2*b1p;
+        ii[1] = b1*b2*b2p;
+        iii[0] = ii[0];
+        iii[1] = ii[1];
+        iv[0] = pow(b2,2.0)*b1p;
+        iv[1] = pow(b2,2.0)*b2p;
+        ierr = VecSetValues(mass_basis.i, 2, idx, i, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(mass_basis.ii, 2, idx, ii, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(mass_basis.iii, 2, idx, iii, INSERT_VALUES); CHKERRQ(ierr); 
+        ierr = VecSetValues(mass_basis.iv, 2, idx, iv, INSERT_VALUES); CHKERRQ(ierr);
+        // conservation of momentum integral evaluation
+        PetscScalar v[2], vi[2], vii[2], viii[2];
+        i[0] = pow(b1,3.0)*b1p;
+        i[1] = pow(b1,3.0)*b2p;
+        ii[0] = pow(b1,2.0)*b2*b1p;
+        ii[1] = pow(b1,2.0)*b2*b2p;
+        iii[0] = ii[0];
+        iii[1] = ii[1];
+        iv[0] = b1*pow(b2,2.0)*b1p;
+        iv[1] = b1*pow(b2,2.0)*b2p;
+        v[0] = iii[0];
+        v[1] = iii[1];
+        vi[0] = pow(b2,3.0)*b1p;
+        vi[1] = pow(b2,3.0)*b2p;
+        vii[0] = b1*b1p;
+        vii[1] = b1*b2p;
+        viii[0] = b2*b1p;
+        viii[1] = b2*b2p;
+        ierr = VecSetValues(momen_basis.i, 2, idx, i, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(momen_basis.ii, 2, idx, ii, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(momen_basis.iii, 2, idx, iii, INSERT_VALUES); CHKERRQ(ierr); 
+        ierr = VecSetValues(momen_basis.iv, 2, idx, iv, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(momen_basis.v, 2, idx, v, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(momen_basis.vi, 2, idx, vi, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(momen_basis.vii, 2, idx, vii, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(momen_basis.viii, 2, idx, viii, INSERT_VALUES); CHKERRQ(ierr);
+        // conservation of energy integral evaluation
+        PetscScalar ix[2], x[2], xi[2], xii[2];
+        i[0] = pow(b1,4.0)*b1p;
+        i[1] = pow(b1,4.0)*b2p;
+        ii[0] = pow(b1,3.0)*b2*b1p;
+        ii[1] = pow(b1,3.0)*b2*b2p;
+        iii[0] = ii[0];
+        iii[1] = ii[1];
+        iv[0] = pow(b1,2.0)*pow(b2,2.0)*b1p;
+        iv[1] = pow(b1,2.0)*pow(b2,2.0)*b2p;
+        v[0] = iv[0];
+        v[1] = iv[1];
+        vi[0] = b1*pow(b2,3.0)*b1p;
+        vi[1] = b1*pow(b2,3.0)*b2p;
+        vii[0] = vi[0];
+        vii[1] = vi[1];
+        viii[0] = pow(b2,4.0)*b1p;
+        viii[1] = pow(b2,4.0)*b2p;
+        ix[0] = pow(b1,2.0)*b1p;
+        ix[1] = pow(b1,2.0)*b2p;
+        x[0] = b1*b2*b1p;
+        x[1] = b1*b2*b2p;
+        xi[0] = x[0];
+        xi[1] = x[1];
+        xii[0] = pow(b2,2.0)*b1p;
+        xii[1] = pow(b2,2.0)*b2p;
+        ierr = VecSetValues(efluid_basis.i, 2, idx, i, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(efluid_basis.ii, 2, idx, ii, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(efluid_basis.iii, 2, idx, iii, INSERT_VALUES); CHKERRQ(ierr); 
+        ierr = VecSetValues(efluid_basis.iv, 2, idx, iv, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(efluid_basis.v, 2, idx, v, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(efluid_basis.vi, 2, idx, vi, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(efluid_basis.vii, 2, idx, vii, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(efluid_basis.viii, 2, idx, viii, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(efluid_basis.ix, 2, idx, ix, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(efluid_basis.x, 2, idx, x, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(efluid_basis.xi, 2, idx, xi, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(efluid_basis.xii, 2, idx, xii, INSERT_VALUES); CHKERRQ(ierr);
+    }
+    else{
+        PetscPrintf(PETSC_COMM_WORLD, "\n\nOrder = %d shape function does not exist.\n\n",ord);
+        exit(1);
+    }
     return ierr;
 }
 
