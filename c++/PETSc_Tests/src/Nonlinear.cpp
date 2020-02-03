@@ -72,14 +72,33 @@ PetscErrorCode NonLinear::Initialize_NL_1D(){
 
     // ------ local FE vec initialization ------
     ierr = VecCreate(PETSC_COMM_WORLD, &ctx.loc_mass_i); CHKERRQ(ierr);
-    ierr = VecSetSizes(ctx.loc_mass_i, PETSC_DECIDE, N); CHKERRQ(ierr);
+    ierr = VecSetSizes(ctx.loc_mass_i, PETSC_DECIDE, info.order[0]); CHKERRQ(ierr);
     ierr = VecSetFromOptions(ctx.loc_mass_i); CHKERRQ(ierr);
     ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_mass_ii); CHKERRQ(ierr);
     ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_mass_iii); CHKERRQ(ierr);
     ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_mass_iv); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_momen_i); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_momen_ii); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_momen_iii); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_momen_iv); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_momen_v); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_momen_vi); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_momen_vii); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_momen_viii); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_efluid_i); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_efluid_ii); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_efluid_iii); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_efluid_iv); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_efluid_v); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_efluid_vi); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_efluid_vii); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_efluid_viii); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_efluid_ix); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_efluid_x); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_efluid_xi); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_i, &ctx.loc_efluid_xii); CHKERRQ(ierr);
 
     // ------ Global FE vec initialization ------
-    // 
     ierr = VecCreate(PETSC_COMM_WORLD, &ctx.glo_mass_i); CHKERRQ(ierr);
     ierr = VecSetSizes(ctx.glo_mass_i, PETSC_DECIDE, N); CHKERRQ(ierr);
     ierr = VecSetFromOptions(ctx.glo_mass_i); CHKERRQ(ierr);
@@ -146,14 +165,14 @@ PetscErrorCode NonLinear::NL_1D(){
     ierr = VecAssemblyEnd(energy); CHKERRQ(ierr);   
 
     ierr = InitializeLocalRHSF(); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_WORLD, "\nHere!\n"); CHKERRQ(ierr);
-    exit(-1);
-
     get1D_QPs(info.maxord, qps1d); // set qps
 
     PetscScalar tmp_vel, tmp_rho, tmp_efluid;
+    /* ------------------------------------------------------ */
+    // // uncomment for viewing results of local integrations
     // PetscScalar aa[2], bb[2], cc[2], dd[2], ee[2], ff[2], gg[2], hh[2];
     // PetscInt tmpIdx[2] = {0, 1};
+    /* ------------------------------------------------------ */
     // PetscInt index[2];
     /* Sweep over elements and solve */
     for (int elem = 0; elem < info.nels; elem ++){
@@ -173,57 +192,60 @@ PetscErrorCode NonLinear::NL_1D(){
             src_momen = MMS_Src_Momentum(x);
             src_energy = MMS_Src_Energy(x);
             // conservation of mass
-            ierr = VecAXPY(ctx.loc_mass_i, qps1d.w[l1] * dx, mass_basis.i); CHKERRQ(ierr);
-            ierr = VecAXPY(ctx.loc_mass_ii, qps1d.w[l1] * dx, mass_basis.ii); CHKERRQ(ierr);
-            ierr = VecAXPY(ctx.loc_mass_iii, qps1d.w[l1] * dx, mass_basis.iii); CHKERRQ(ierr);
-            ierr = VecAXPY(ctx.loc_mass_iv, qps1d.w[l1] * dx, mass_basis.iv); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_mass_i, qps1d.w[l1], mass_basis.i); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_mass_ii, qps1d.w[l1], mass_basis.ii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_mass_iii, qps1d.w[l1], mass_basis.iii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_mass_iv, qps1d.w[l1], mass_basis.iv); CHKERRQ(ierr);
             // // conservation of momentum
-            // ierr = VecAXPY(ctx.loc_momen_i, 1.0 * qps1d.w[l1] * dx, momen_basis.i); CHKERRQ(ierr);
-            // ierr = VecAXPY(ctx.loc_momen_ii, 1.0 * qps1d.w[l1] * dx, momen_basis.ii); CHKERRQ(ierr);
-            // ierr = VecAXPY(ctx.loc_momen_iii, 1.0 * qps1d.w[l1] * dx, momen_basis.iii); CHKERRQ(ierr);
-            // ierr = VecAXPY(ctx.loc_momen_iv, 1.0 * qps1d.w[l1] * dx, momen_basis.iv); CHKERRQ(ierr);
-            // ierr = VecAXPY(ctx.loc_momen_v, 1.0 * qps1d.w[l1] * dx, momen_basis.v); CHKERRQ(ierr);
-            // ierr = VecAXPY(ctx.loc_momen_vi, 1.0 * qps1d.w[l1] * dx, momen_basis.vi); CHKERRQ(ierr);
-            // ierr = VecAXPY(ctx.loc_momen_vii, 1.0 * qps1d.w[l1] * dx, momen_basis.vii); CHKERRQ(ierr);
-            // ierr = VecAXPY(ctx.loc_momen_viii, 1.0 * qps1d.w[l1] * dx, momen_basis.vii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_momen_i, 1.0 * qps1d.w[l1], momen_basis.i); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_momen_ii, 1.0 * qps1d.w[l1], momen_basis.ii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_momen_iii, 1.0 * qps1d.w[l1], momen_basis.iii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_momen_iv, 1.0 * qps1d.w[l1], momen_basis.iv); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_momen_v, 1.0 * qps1d.w[l1], momen_basis.v); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_momen_vi, 1.0 * qps1d.w[l1], momen_basis.vi); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_momen_vii, 1.0 * qps1d.w[l1], momen_basis.vii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_momen_viii, 1.0 * qps1d.w[l1], momen_basis.vii); CHKERRQ(ierr);
             // // conservation of energy
-            // ierr = VecAXPY(ctx.loc_efluid_i, 1.0 * qps1d.w[l1] * dx, efluid_basis.i); CHKERRQ(ierr);
-            // ierr = VecAXPY(ctx.loc_efluid_ii, 1.0 * qps1d.w[l1] * dx, efluid_basis.ii); CHKERRQ(ierr);
-            // ierr = VecAXPY(ctx.loc_efluid_iii, 1.0 * qps1d.w[l1] * dx, efluid_basis.iii); CHKERRQ(ierr);
-            // ierr = VecAXPY(ctx.loc_efluid_iv, 1.0 * qps1d.w[l1] * dx, efluid_basis.iv); CHKERRQ(ierr);
-            // ierr = VecAXPY(ctx.loc_efluid_v, 1.0 * qps1d.w[l1] * dx, efluid_basis.v); CHKERRQ(ierr);
-            // ierr = VecAXPY(ctx.loc_efluid_vi, 1.0 * qps1d.w[l1] * dx, efluid_basis.vi); CHKERRQ(ierr);
-            // ierr = VecAXPY(ctx.loc_efluid_vii, 1.0 * qps1d.w[l1] * dx, efluid_basis.vii); CHKERRQ(ierr);
-            // ierr = VecAXPY(ctx.loc_efluid_viii, 1.0 * qps1d.w[l1] * dx, efluid_basis.viii); CHKERRQ(ierr);
-            // ierr = VecAXPY(ctx.loc_efluid_ix, 1.0 * qps1d.w[l1] * dx, efluid_basis.ix); CHKERRQ(ierr);
-            // ierr = VecAXPY(ctx.loc_efluid_x, 1.0 * qps1d.w[l1] * dx, efluid_basis.x); CHKERRQ(ierr);
-            // ierr = VecAXPY(ctx.loc_efluid_xi, 1.0 * qps1d.w[l1] * dx, efluid_basis.xi); CHKERRQ(ierr);
-            // ierr = VecAXPY(ctx.loc_efluid_xii, 1.0 * qps1d.w[l1] * dx, efluid_basis.xii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_efluid_i, 1.0 * qps1d.w[l1], efluid_basis.i); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_efluid_ii, 1.0 * qps1d.w[l1], efluid_basis.ii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_efluid_iii, 1.0 * qps1d.w[l1], efluid_basis.iii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_efluid_iv, 1.0 * qps1d.w[l1], efluid_basis.iv); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_efluid_v, 1.0 * qps1d.w[l1], efluid_basis.v); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_efluid_vi, 1.0 * qps1d.w[l1], efluid_basis.vi); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_efluid_vii, 1.0 * qps1d.w[l1], efluid_basis.vii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_efluid_viii, 1.0 * qps1d.w[l1], efluid_basis.viii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_efluid_ix, 1.0 * qps1d.w[l1], efluid_basis.ix); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_efluid_x, 1.0 * qps1d.w[l1], efluid_basis.x); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_efluid_xi, 1.0 * qps1d.w[l1], efluid_basis.xi); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_efluid_xii, 1.0 * qps1d.w[l1], efluid_basis.xii); CHKERRQ(ierr);
         }
-        // VecGetValues(ctx.mass_i, 2, tmpIdx, aa);
-        // VecGetValues(ctx.mass_ii, 2, tmpIdx, bb);
-        // VecGetValues(ctx.mass_iv, 2, tmpIdx, cc);
+        /* ------------------------------------------------------ */
+        // // uncomment for viewing results of local integrations
+        // VecGetValues(ctx.loc_mass_i, 2, tmpIdx, aa);
+        // VecGetValues(ctx.loc_mass_ii, 2, tmpIdx, bb);
+        // VecGetValues(ctx.loc_mass_iv, 2, tmpIdx, cc);
         // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\n", aa[0], bb[0], cc[0]);
         // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\n\n", aa[1], bb[1], cc[1]);
-        // VecGetValues(ctx.momen_i, 2, tmpIdx, aa);
-        // VecGetValues(ctx.momen_ii, 2, tmpIdx, bb);
-        // VecGetValues(ctx.momen_iv, 2, tmpIdx, cc);
-        // VecGetValues(ctx.momen_vi, 2, tmpIdx, dd);
-        // VecGetValues(ctx.momen_vii, 2, tmpIdx, ee);
-        // VecGetValues(ctx.momen_viii, 2, tmpIdx, ff);
+        // VecGetValues(ctx.loc_momen_i, 2, tmpIdx, aa);
+        // VecGetValues(ctx.loc_momen_ii, 2, tmpIdx, bb);
+        // VecGetValues(ctx.loc_momen_iv, 2, tmpIdx, cc);
+        // VecGetValues(ctx.loc_momen_vi, 2, tmpIdx, dd);
+        // VecGetValues(ctx.loc_momen_vii, 2, tmpIdx, ee);
+        // VecGetValues(ctx.loc_momen_viii, 2, tmpIdx, ff);
         // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\n", aa[0], bb[0], cc[0], dd[0], ee[0], ff[0]);
         // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\n\n", aa[1], bb[1], cc[1], dd[1], ee[1], ff[1]);
-        // VecGetValues(ctx.efluid_i, 2, tmpIdx, aa);
-        // VecGetValues(ctx.efluid_ii, 2, tmpIdx, bb);
-        // VecGetValues(ctx.efluid_iv, 2, tmpIdx, cc);
-        // VecGetValues(ctx.efluid_vi, 2, tmpIdx, dd);
-        // VecGetValues(ctx.efluid_viii, 2, tmpIdx, ee);
-        // VecGetValues(ctx.efluid_ix, 2, tmpIdx, ff);
-        // VecGetValues(ctx.efluid_x, 2, tmpIdx, gg);
-        // VecGetValues(ctx.efluid_xii, 2, tmpIdx, hh);
+        // VecGetValues(ctx.loc_efluid_i, 2, tmpIdx, aa);
+        // VecGetValues(ctx.loc_efluid_ii, 2, tmpIdx, bb);
+        // VecGetValues(ctx.loc_efluid_iv, 2, tmpIdx, cc);
+        // VecGetValues(ctx.loc_efluid_vi, 2, tmpIdx, dd);
+        // VecGetValues(ctx.loc_efluid_viii, 2, tmpIdx, ee);
+        // VecGetValues(ctx.loc_efluid_ix, 2, tmpIdx, ff);
+        // VecGetValues(ctx.loc_efluid_x, 2, tmpIdx, gg);
+        // VecGetValues(ctx.loc_efluid_xii, 2, tmpIdx, hh);
         // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\n", aa[0], bb[0], cc[0], dd[0], ee[0], ff[0], gg[0], hh[0]);
         // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\n\n", aa[1], bb[1], cc[1], dd[1], ee[1], ff[1], gg[1], hh[1]);
         // exit(-1);
+        /* ------------------------------------------------------ */
 
         /* get upwind info */
         if (elem == 0) { // use BC info
