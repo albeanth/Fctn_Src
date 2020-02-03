@@ -95,6 +95,7 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         PetscErrorCode NL_1D();
     private:
         // Private Member Variables
+        PetscInt loc_to_glob_map[2]; /* c array with indices for local to global mapping */
         double xL, xR, dx, x; /* cell specific information */
         PetscScalar src_mass, src_momen, src_energy;
         PetscMPIInt size;
@@ -114,11 +115,12 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         /* Initialize Quadrature Parameters */
         QuadParams1D qps1d;
         // Private Member Functions
-        PetscErrorCode NLSolve(const int elem, PetscScalar vL, PetscScalar vR, PetscScalar rL, PetscScalar rR, PetscScalar eL, PetscScalar eR);
+        PetscErrorCode NLSolve(PetscScalar vL, PetscScalar vR, PetscScalar rL, PetscScalar rR, PetscScalar eL, PetscScalar eR);
         PetscErrorCode InitializeLocalRHSF();
         PetscErrorCode VelRho_L2Error();
         PetscErrorCode EvalBasis(const double x, const int ord);
         PetscErrorCode Initialize_NL_1D();
+        PetscErrorCode Local2Global(const int el);
 };
 
 #endif

@@ -173,14 +173,13 @@ PetscErrorCode NonLinear::NL_1D(){
     // PetscScalar aa[2], bb[2], cc[2], dd[2], ee[2], ff[2], gg[2], hh[2];
     // PetscInt tmpIdx[2] = {0, 1};
     /* ------------------------------------------------------ */
-    // PetscInt index[2];
     /* Sweep over elements and solve */
     for (int elem = 0; elem < info.nels; elem ++){
         xL = info.xnod[ info.nod[elem][0] ];
         xR = info.xnod[ info.nod[elem][info.order[elem]-1] ];
         dx = (xR-xL)/2.0;
-        // index[0] = elem*info.order[elem];
-        // index[1] = index[0]+(info.order[elem]-1);
+        loc_to_glob_map[0] = elem*info.order[elem];
+        loc_to_glob_map[1] = loc_to_glob_map[0] + (info.order[elem] - 1);
 
         for (int l1 = 0; l1 < qps1d.nw; l1++){
             /* map from ref elem to real elem */
@@ -259,25 +258,14 @@ PetscErrorCode NonLinear::NL_1D(){
           VecGetValues(density, 1, &index, &tmp_rho);
           VecGetValues(energy, 1, &index, &tmp_efluid);
         }
-        // compute upwind values for mass and momentum
+        // compute upwind values for mass and momentum and store them in their global matrices
         VecSetValue(ctx.mass_upwind, elem*info.order[elem], tmp_vel * tmp_rho, INSERT_VALUES);
         VecSetValue(ctx.momen_upwind, elem*info.order[elem], tmp_rho * pow(tmp_vel, 2.0) + ctx.gamma_s * tmp_efluid, INSERT_VALUES);
         VecSetValue(ctx.energy_upwind, elem*info.order[elem], 1.0/2.0 * tmp_rho * pow(tmp_vel, 3.0) + (1.0+ctx.gamma_s) * tmp_vel * tmp_efluid, INSERT_VALUES);
-        
-        // VecGetValues(ctx.mass_src, 2, tmpIdx, aa);
-        // VecGetValues(ctx.momen_src, 2, tmpIdx, bb);
-        // VecGetValues(ctx.energy_src, 2, tmpIdx, cc);
-        // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\n", aa[0], bb[0], cc[0]);
-        // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\n", aa[1], bb[1], cc[1]);
 
-        /* Solve nonlinear system of equations over elem */
-        PetscScalar vL = tmp_vel;    //u(xL);
-        PetscScalar vR = vL - dx;    //u(xR);
-        PetscScalar rL = tmp_rho;    //rho(xL);
-        PetscScalar rR = rL + dx;    //rho(xR);
-        PetscScalar eL = tmp_efluid; //efluid(xL);
-        PetscScalar eR = eL + dx;    //efluid(xR);
-        ierr = NLSolve(elem, vL, vR, rL, rR, eL, eR); CHKERRQ(ierr);
+        /* Map local vectors to global vectors */
+        ierr = Local2Global(elem); CHKERRQ(ierr);
+
         /* set vector entries equal to zero (while maintaining structure) */
         ierr = InitializeLocalRHSF(); CHKERRQ(ierr);
     }
@@ -499,7 +487,69 @@ PetscErrorCode NonLinear::InitializeLocalRHSF(){
     return ierr;
 }
 
-PetscErrorCode NonLinear::NLSolve(const int elem, PetscScalar vL, PetscScalar vR, PetscScalar rL, PetscScalar rR, PetscScalar eL, PetscScalar eR){
+PetscErrorCode NonLinear::Local2Global(const int el){
+    /*
+     *  Maps local FE integration information to global system of nonlinear equations
+     */
+    PetscInt glo_idx[2];
+    glo_idx[0] = el*info.order[el];
+    glo_idx[1] = glo_idx[0] + (info.order[el]-1);
+    PetscInt loc_idx[2] = {0,1};
+    PetscScalar loc_val[2];
+    // conservation of masss
+    ierr = VecGetValues(ctx.loc_mass_i, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_mass_i, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_mass_ii, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_mass_ii, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_mass_iii, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_mass_iii, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_mass_iv, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_mass_iv, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    // conservation of momentum
+    ierr = VecGetValues(ctx.loc_momen_i, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_momen_i, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_momen_ii, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_momen_ii, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_momen_iii, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_momen_iii, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_momen_iv, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_momen_iv, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_momen_v, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_momen_v, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_momen_vi, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_momen_vi, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_momen_vii, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_momen_vii, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_momen_viii, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_momen_viii, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    // conservation of energy
+    ierr = VecGetValues(ctx.loc_efluid_i, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_efluid_i, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_efluid_ii, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_efluid_ii, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_efluid_iii, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_efluid_iii, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_efluid_iv, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_efluid_iv, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_efluid_v, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_efluid_v, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_efluid_vi, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_efluid_vi, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_efluid_vii, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_efluid_vii, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_efluid_viii, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_efluid_viii, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_efluid_ix, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_efluid_ix, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_efluid_x, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_efluid_x, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_efluid_xi, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_efluid_xi, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_efluid_xii, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_efluid_xii, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    return ierr;
+}
+
     /*
      *  create nonlinear solver context and solve equations
      */
