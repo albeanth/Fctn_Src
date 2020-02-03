@@ -20,18 +20,38 @@
 struct ApplicationCTX{
     PetscScalar gamma_s = 5.0/3.0 - 1.0;
     /* conservation of mass */
-    Vec mass_i, mass_ii, mass_iii, mass_iv;
-    Vec mass_src;      /* mms source for cons. of mass */
-    PetscScalar mass_upwind; /* upwind source for cons. of mass */
+    Vec loc_mass_i, glo_mass_i;
+    Vec loc_mass_ii, glo_mass_ii;
+    Vec loc_mass_iii, glo_mass_iii;
+    Vec loc_mass_iv, glo_mass_iv;
+    Vec mass_src;      // GLOBAL mms source for cons. of mass
+    Vec mass_upwind;   // GLOBAL upwind source for cons. of mass
     /* conservation of momentum */
-    Vec momen_i, momen_ii, momen_iii, momen_iv, momen_v, momen_vi, momen_vii, momen_viii;
-    Vec momen_src;     /* mms source for cons. of momentum */
-    PetscScalar momen_upwind;  /* upwind sources for cons. of momentum */
+    Vec loc_momen_i, glo_momen_i;
+    Vec loc_momen_ii, glo_momen_ii;
+    Vec loc_momen_iii, glo_momen_iii;
+    Vec loc_momen_iv, glo_momen_iv;
+    Vec loc_momen_v, glo_momen_v;
+    Vec loc_momen_vi, glo_momen_vi;
+    Vec loc_momen_vii, glo_momen_vii;
+    Vec loc_momen_viii, glo_momen_viii;
+    Vec momen_src;     // GLOBAL mms source for cons. of momentum
+    Vec momen_upwind;  // GLOBAL upwind sources for cons. of momentum
     /* conservation of fluid energy */
-    Vec efluid_i, efluid_ii, efluid_iii, efluid_iv, efluid_v, efluid_vi, efluid_vii, efluid_viii;
-    Vec efluid_ix, efluid_x, efluid_xi, efluid_xii;
-    Vec energy_src;    /* mms source for cons. of momentum */
-    PetscScalar energy_upwind; /* upwind source for cons. of momentum */
+    Vec loc_efluid_i, glo_efluid_i;
+    Vec loc_efluid_ii, glo_efluid_ii;
+    Vec loc_efluid_iii, glo_efluid_iii;
+    Vec loc_efluid_iv, glo_efluid_iv;
+    Vec loc_efluid_v, glo_efluid_v;
+    Vec loc_efluid_vi, glo_efluid_vi;
+    Vec loc_efluid_vii, glo_efluid_vii;
+    Vec loc_efluid_viii, glo_efluid_viii;
+    Vec loc_efluid_ix, glo_efluid_ix;
+    Vec loc_efluid_x, glo_efluid_x;
+    Vec loc_efluid_xi, glo_efluid_xi;
+    Vec loc_efluid_xii, glo_efluid_xii;
+    Vec energy_src;    // GLOBAL mms source for cons. of momentum
+    Vec energy_upwind; // GLOBAL upwind source for cons. of momentum
 };
 
 struct MassBasis{
@@ -58,8 +78,13 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
     uses petsc snes library to solve nonlinear differential equations
     */
     public:
-        NonLinear(const int test_num, const bool hetero, const std::vector<double> &Bnds)
-        : TestFunction(test_num, hetero), SetUpGrid(Bnds), PetscFEFuncs(){};
+        NonLinear(int argc, char **args, const int test_num, const bool hetero, const std::vector<double> &Bnds)
+        : TestFunction(test_num, hetero), SetUpGrid(Bnds), PetscFEFuncs()
+        {
+          /* ------ PETSc initialization information ------ */
+          PetscInitialize(&argc, &args, (char *)0, help);
+          MPI_Comm_size(PETSC_COMM_WORLD, &size);
+        };
         // Public Member Variables
         Vec velocity; /* global solution */
         Vec density;  /* global solution */
@@ -67,12 +92,16 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         PetscScalar l2Err_Vel, l2Err_Rho, l2Err_Em; /* l2 error */
         PetscScalar h1Err_Vel, h1Err_Rho, h1Err_Em; /* h1 error */
         // Public Member Functions
-        PetscErrorCode NL_1D(int argc, char **args);
+        PetscErrorCode NL_1D();
     private:
         // Private Member Variables
+        double xL, xR, dx, x; /* cell specific information */
+        PetscScalar src_mass, src_momen, src_energy;
+        PetscMPIInt size;
+        PetscInt N;
         PetscErrorCode ierr;    /* petsc error code */
         SNES snes;              /* nonlinear solver context */
-        Vec x, r;               /* local solution and residual vectors */
+        Vec soln, residual;     /* local solution and residual vectors */
         Mat J;                  /* Jacobian matrix */
         ApplicationCTX ctx;     /* Instance of ApplicationCTX struct */
         PetscInt index;         /* Index number for where to pull upwind values from */
@@ -89,6 +118,7 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         PetscErrorCode InitializeLocalRHSF();
         PetscErrorCode VelRho_L2Error();
         PetscErrorCode EvalBasis(const double x, const int ord);
+        PetscErrorCode Initialize_NL_1D();
 };
 
 #endif

@@ -4,6 +4,7 @@
 #include <vector>
 
 int main(int argc,char **args){
+    const int FEorder {1};
     const std::vector<int> NumOfElem {32};
     /*
      * test #'s < 100
@@ -25,15 +26,15 @@ int main(int argc,char **args){
     if (selection < 100){
         BVP CFEM(selection, hetero, Bnds);
         for (int i=0; i<NumOfElem.size(); i++){
-            CFEM.add_CFEMGrid(NumOfElem[i], 1);
+            CFEM.add_CFEMGrid(NumOfElem[i], FEorder);
             CFEM.CFEM_1D(argc, args);
         }
     }
     else{
-        NonLinear NLTest(selection, hetero, Bnds);
+        NonLinear NLTest(argc, args, selection, hetero, Bnds);
         for (int i = 0; i < NumOfElem.size(); i++) {
-            NLTest.add_DFEMGrid(NumOfElem[i], 1);
-            NLTest.NL_1D(argc, args);
+            NLTest.add_DFEMGrid(NumOfElem[i], FEorder);
+            NLTest.NL_1D();
             // L2Error_Vel[i] = NLTest.l2Err_Vel;
             // L2Error_Rho[i] = NLTest.l2Err_Rho;
             // H1Error_Vel[i] = NLTest.h1Err_Vel;
