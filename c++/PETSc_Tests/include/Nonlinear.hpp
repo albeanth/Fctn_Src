@@ -91,6 +91,7 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         Vec energy;  /* global solution */
         PetscScalar l2Err_Vel, l2Err_Rho, l2Err_Em; /* l2 error */
         PetscScalar h1Err_Vel, h1Err_Rho, h1Err_Em; /* h1 error */
+        ApplicationCTX ctx; /* Instance of ApplicationCTX struct */
         // Public Member Functions
         PetscErrorCode NL_1D();
     private:
@@ -104,7 +105,6 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         SNES snes;              /* nonlinear solver context */
         Vec soln, residual;     /* local solution and residual vectors */
         Mat J;                  /* Jacobian matrix */
-        ApplicationCTX ctx;     /* Instance of ApplicationCTX struct */
         PetscInt index;         /* Index number for where to pull upwind values from */
         KSP ksp;                /* linear solver context */
         PC pc;                  /* preconditioner context */

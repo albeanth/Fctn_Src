@@ -21,8 +21,8 @@ PetscErrorCode NonLinear::Initialize_NL_1D(){
     ierr = MatSetFromOptions(J); CHKERRQ(ierr);
     ierr = MatSetUp(J); CHKERRQ(ierr);
     // set function and jacobian functions
-    ierr = SNESSetFunction(snes, residual, FormFunction, &ctx); CHKERRQ(ierr); // set function evaluation routing and vector 
-    ierr = SNESSetJacobian(snes, J, J, FormJacobian, &ctx); CHKERRQ(ierr); // set Jacobian matrix data strcuture and evaluation routine 
+    ierr = SNESSetFunction(snes, residual, FormFunction, this); CHKERRQ(ierr); // set function evaluation routing and vector 
+    ierr = SNESSetJacobian(snes, J, J, FormJacobian, this); CHKERRQ(ierr); // set Jacobian matrix data strcuture and evaluation routine 
     /*
     *  Customize nonlinear solver; set runtime options
     *    Set linear solver defaults for this problem. By extracting the
@@ -152,7 +152,7 @@ PetscErrorCode NonLinear::NL_1D(){
         SETERRQ(PETSC_COMM_WORLD,1,"This is a uniprocessor example only!");
     }
     ierr = Initialize_NL_1D(); CHKERRQ(ierr);
-    
+
     /* --------- Assign and Assembly Boundary Conditions --------- */
     // assign left side BC (hydro equations)
     ierr = VecSetValue(velocity, 0, u(info.bounds[0]), INSERT_VALUES); CHKERRQ(ierr);
@@ -598,29 +598,83 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
      * OUTPUTS:
      *    f    - function vector
      */
-    ApplicationCTX *user = (ApplicationCTX *)ctx;
+
+    NonLinear *user = (NonLinear *)ctx;
     PetscErrorCode ierr;
     const PetscScalar *xx;
     PetscScalar       *ff;
-    PetscScalar mass_src[2];
-    PetscScalar momen_src[2];
-    PetscScalar efluid_src[2];
-    PetscInt idx[2] = {0, 1};
-    /* Get values from local rhsf vectors and store into petsc scalars */
-    ierr = VecGetValues(user->mass_src, 2, idx, mass_src);
-    ierr = VecGetValues(user->momen_src, 2, idx, momen_src);
-    ierr = VecGetValues(user->energy_src, 2, idx, efluid_src);
+    const int N {user->info.nnodes};
 
-    // printf("  user->mass_upwind = %.3e\n", user->mass_upwind);
-    // printf("  user->mass_src[0] = %.3e\n", mass_src[0]);
-    // printf("  user->mass_src[1] = %.3e\n", mass_src[1]);
-    // printf("  user->momen_upwind = %.3e\n", user->momen_upwind);
-    // printf("  user->momen_src[0] = %.3e\n", momen_src[0]);
-    // printf("  user->momen_src[1] = %.3e\n", momen_src[1]);
-    // printf("  user->energy_upwind_i, energy_upwind_ii = %.3e, %.3e\n", user->energy_upwind_i, user->energy_upwind_ii);
-    // printf("  user->efluid_src[0] = %.3e\n", efluid_src[0]);
-    // printf("  user->efluid_src[1] = %.3e\n", efluid_src[1]);
-    // exit(-1);
+    PetscScalar *mass_i, *mass_ii, *mass_iii, *mass_iv;
+    PetscScalar *mass_src;
+    mass_i = (PetscScalar*) malloc(N * sizeof(PetscScalar));
+    mass_ii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    mass_iii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    mass_iv = (PetscScalar *) malloc(N * sizeof(PetscScalar));
+    mass_src = (PetscScalar *) malloc(N * sizeof(PetscScalar));
+    PetscScalar *momen_i, *momen_ii, *momen_iii, *momen_iv;
+    PetscScalar *momen_v, *momen_vi, *momen_vii, *momen_viii;
+    PetscScalar *momen_src;
+    momen_i = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    momen_ii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    momen_iii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    momen_iv = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    momen_v = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    momen_vi = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    momen_vii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    momen_viii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    momen_src = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    PetscScalar *efluid_i, *efluid_ii, *efluid_iii, *efluid_iv;
+    PetscScalar *efluid_v, *efluid_vi, *efluid_vii, *efluid_viii;
+    PetscScalar *efluid_ix, *efluid_x, *efluid_xi, *efluid_xii;
+    PetscScalar *efluid_src;
+    efluid_i = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    efluid_ii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    efluid_iii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    efluid_iv = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    efluid_v = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    efluid_vi = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    efluid_vii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    efluid_viii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    efluid_ix = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    efluid_x = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    efluid_xi = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    efluid_xii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    efluid_src = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+
+    // assign petsc Vec to c array for use
+    PetscInt *idx;
+    idx = (PetscInt*) malloc(N * sizeof(PetscInt));
+    for (int i=0; i<N; i++){
+        idx[i] = i;
+    }
+    // conservation of mass
+    ierr = VecGetValues(user->ctx.glo_mass_i, N, idx, mass_i); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_mass_ii, N, idx, mass_ii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_mass_iii, N, idx, mass_iii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_mass_iv, N, idx, mass_iv); CHKERRQ(ierr);
+    // conservation of momentum
+    ierr = VecGetValues(user->ctx.glo_momen_i, N, idx, momen_i); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_momen_ii, N, idx, momen_ii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_momen_iii, N, idx, momen_iii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_momen_iv, N, idx, momen_iv); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_momen_v, N, idx, momen_v); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_momen_vi, N, idx, momen_vi); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_momen_vii, N, idx, momen_vii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_momen_viii, N, idx, momen_viii); CHKERRQ(ierr);
+    // conservation of fluid energy
+    ierr = VecGetValues(user->ctx.glo_efluid_i, N, idx, efluid_i); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_ii, N, idx, efluid_ii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_iii, N, idx, efluid_iii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_iv, N, idx, efluid_iv); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_v, N, idx, efluid_v); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_vi, N, idx, efluid_vi); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_vii, N, idx, efluid_vii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_viii, N, idx, efluid_viii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_ix, N, idx, efluid_ix); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_x, N, idx, efluid_x); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_xi, N, idx, efluid_xi); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_xii, N, idx, efluid_xii); CHKERRQ(ierr);
 
     /*
     Get pointers to vector data.
