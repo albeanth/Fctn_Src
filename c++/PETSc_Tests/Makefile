@@ -1,5 +1,5 @@
 # set compilers
-CXX = mpicc
+CXX = g++
 # set flags
 CPPFLAGS = -Wall -O3 -std=c++11
 
