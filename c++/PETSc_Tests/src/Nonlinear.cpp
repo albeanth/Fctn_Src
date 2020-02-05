@@ -146,10 +146,6 @@ PetscErrorCode NonLinear::Initialize_NL_1D(){
     ierr = VecDuplicate(ctx.glo_mass_i, &ctx.glo_mass_src); CHKERRQ(ierr);
     ierr = VecDuplicate(ctx.glo_mass_i, &ctx.glo_momen_src); CHKERRQ(ierr);
     ierr = VecDuplicate(ctx.glo_mass_i, &ctx.glo_efluid_src); CHKERRQ(ierr);
-    // upwind vectors
-    ierr = VecDuplicate(ctx.glo_mass_i, &ctx.mass_upwind); CHKERRQ(ierr);
-    ierr = VecDuplicate(ctx.glo_mass_i, &ctx.momen_upwind); CHKERRQ(ierr);
-    ierr = VecDuplicate(ctx.glo_mass_i, &ctx.efluid_upwind); CHKERRQ(ierr);
     // solution vectors
     ierr = VecDuplicate(ctx.glo_mass_i, &velocity); CHKERRQ(ierr);
     ierr = VecDuplicate(ctx.glo_mass_i, &density); CHKERRQ(ierr);
@@ -182,7 +178,6 @@ PetscErrorCode NonLinear::NL_1D(){
     ierr = InitializeLocalRHSF(); CHKERRQ(ierr);
     get1D_QPs(info.maxord, qps1d); // set qps
 
-    PetscScalar tmp_vel, tmp_rho, tmp_efluid;
     /* ------------------------------------------------------ */
     // // uncomment for viewing results of local integrations
     // PetscScalar aa[2], bb[2], cc[2], dd[2], ee[2], ff[2], gg[2], hh[2];
@@ -262,23 +257,6 @@ PetscErrorCode NonLinear::NL_1D(){
         // exit(-1);
         /* ------------------------------------------------------ */
 
-        /* get upwind info */
-        if (elem == 0) { // use BC info
-          tmp_vel = u(info.bounds[0]);
-          tmp_rho = rho(info.bounds[0]);
-          tmp_efluid = efluid(info.bounds[0]);
-        } 
-        else { // use previous element info
-          index = elem * info.order[elem] - 1;
-          VecGetValues(velocity, 1, &index, &tmp_vel);
-          VecGetValues(density, 1, &index, &tmp_rho);
-          VecGetValues(energy, 1, &index, &tmp_efluid);
-        }
-        // compute upwind values for mass and momentum and store them in their global matrices
-        VecSetValue(ctx.mass_upwind, elem*info.order[elem], tmp_vel * tmp_rho, INSERT_VALUES);
-        VecSetValue(ctx.momen_upwind, elem*info.order[elem], tmp_rho * pow(tmp_vel, 2.0) + ctx.gamma_s * tmp_efluid, INSERT_VALUES);
-        VecSetValue(ctx.efluid_upwind, elem*info.order[elem], 1.0/2.0 * tmp_rho * pow(tmp_vel, 3.0) + (1.0+ctx.gamma_s) * tmp_vel * tmp_efluid, INSERT_VALUES);
-
         /* Map local vectors to global vectors */
         ierr = Local2Global(elem); CHKERRQ(ierr);
 
@@ -288,12 +266,16 @@ PetscErrorCode NonLinear::NL_1D(){
     /* Solve nonlinear system of equations over elem */
     ierr = NLSolve(); CHKERRQ(ierr);
     /* print global solution */
+    PetscScalar tmp_vel, tmp_rho, tmp_efluid;
     PetscPrintf(PETSC_COMM_WORLD, "cm\tvelocity\tdensity\n");
     for (int index = 0; index < info.nnodes; index++){
         VecGetValues(velocity, 1, &index, &tmp_vel);
         VecGetValues(density, 1, &index, &tmp_rho);
         VecGetValues(energy, 1, &index, &tmp_efluid);
         PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\n", info.xnod[index], tmp_vel, tmp_rho, tmp_efluid, u(info.xnod[index]), rho(info.xnod[index]), efluid(info.xnod[index]) );
+        if (index % 2 == 1){
+            PetscPrintf(PETSC_COMM_WORLD,"\n");
+        }
     }
     /* Check numerical solution */
     // ierr = VelRho_L2Error(); CHKERRQ(ierr);
@@ -706,16 +688,15 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     const int nn {user->info.nnodes};
 
     PetscScalar *mass_i, *mass_ii, *mass_iii, *mass_iv;
-    PetscScalar *mass_upwind, *mass_src;
+    PetscScalar mass_upwind, *mass_src;
     mass_i = (PetscScalar*) malloc(nn * sizeof(PetscScalar));
     mass_ii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
     mass_iii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
     mass_iv = (PetscScalar *) malloc(nn * sizeof(PetscScalar));
-    mass_upwind = (PetscScalar *) malloc(nn * sizeof(PetscScalar));
     mass_src = (PetscScalar *) malloc(nn * sizeof(PetscScalar));
     PetscScalar *momen_i, *momen_ii, *momen_iii, *momen_iv;
     PetscScalar *momen_v, *momen_vi, *momen_vii, *momen_viii;
-    PetscScalar *momen_upwind, *momen_src;
+    PetscScalar momen_upwind, *momen_src;
     momen_i = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
     momen_ii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
     momen_iii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
@@ -724,12 +705,11 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     momen_vi = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
     momen_vii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
     momen_viii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
-    momen_upwind = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
     momen_src = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
     PetscScalar *efluid_i, *efluid_ii, *efluid_iii, *efluid_iv;
     PetscScalar *efluid_v, *efluid_vi, *efluid_vii, *efluid_viii;
     PetscScalar *efluid_ix, *efluid_x, *efluid_xi, *efluid_xii;
-    PetscScalar *efluid_upwind, *efluid_src;
+    PetscScalar efluid_upwind, *efluid_src;
     efluid_i = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
     efluid_ii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
     efluid_iii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
@@ -742,7 +722,6 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     efluid_x = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
     efluid_xi = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
     efluid_xii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
-    efluid_upwind = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
     efluid_src = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
 
     // assign petsc Vec to c array for use
@@ -756,7 +735,6 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     ierr = VecGetValues(user->ctx.glo_mass_ii, nn, idx, mass_ii); CHKERRQ(ierr);
     ierr = VecGetValues(user->ctx.glo_mass_iii, nn, idx, mass_iii); CHKERRQ(ierr);
     ierr = VecGetValues(user->ctx.glo_mass_iv, nn, idx, mass_iv); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.mass_upwind, nn, idx, mass_upwind); CHKERRQ(ierr);
     ierr = VecGetValues(user->ctx.glo_mass_src, nn, idx, mass_src); CHKERRQ(ierr);
     // conservation of momentum
     ierr = VecGetValues(user->ctx.glo_momen_i, nn, idx, momen_i); CHKERRQ(ierr);
@@ -767,7 +745,6 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     ierr = VecGetValues(user->ctx.glo_momen_vi, nn, idx, momen_vi); CHKERRQ(ierr);
     ierr = VecGetValues(user->ctx.glo_momen_vii, nn, idx, momen_vii); CHKERRQ(ierr);
     ierr = VecGetValues(user->ctx.glo_momen_viii, nn, idx, momen_viii); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.momen_upwind, nn, idx, momen_upwind); CHKERRQ(ierr);
     ierr = VecGetValues(user->ctx.glo_momen_src, nn, idx, momen_src); CHKERRQ(ierr);
     // conservation of fluid energy
     ierr = VecGetValues(user->ctx.glo_efluid_i, nn, idx, efluid_i); CHKERRQ(ierr);
@@ -782,7 +759,6 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     ierr = VecGetValues(user->ctx.glo_efluid_x, nn, idx, efluid_x); CHKERRQ(ierr);
     ierr = VecGetValues(user->ctx.glo_efluid_xi, nn, idx, efluid_xi); CHKERRQ(ierr);
     ierr = VecGetValues(user->ctx.glo_efluid_xii, nn, idx, efluid_xii); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.efluid_upwind, nn, idx, efluid_upwind); CHKERRQ(ierr);
     ierr = VecGetValues(user->ctx.glo_efluid_src, nn, idx, efluid_src); CHKERRQ(ierr);
 
     /*
@@ -802,12 +778,24 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
      *    cell 2 -> i = 2
      */
     for (PetscInt i=0; i<nn; i+=user->info.order[0]){
+        if (i == 0){
+            mass_upwind = user->rho(user->info.bounds[0]) * user->u(user->info.bounds[0]);
+            momen_upwind = user->rho(user->info.bounds[0]) * pow(user->u(user->info.bounds[0]),2.0)
+                            + user->ctx.gamma_s * user->efluid(user->info.bounds[0]);
+            efluid_upwind = 0.5 * user->rho(user->info.bounds[0]) * pow(user->u(user->info.bounds[0]),3.0) 
+                            + (1.0 + user->ctx.gamma_s) * user->u(user->info.bounds[0]) * user->efluid(user->info.bounds[0]);
+        }
+        else{
+            mass_upwind = xx[nn+i-1] * xx[i-1];
+            momen_upwind = xx[nn+i-1] * pow(xx[i-1],2.0) + user->ctx.gamma_s * xx[2*nn+i-1];
+            efluid_upwind = 0.5 * xx[nn+i-1] * pow(xx[i-1],3.0) + (1.0 + user->ctx.gamma_s) * xx[i-1] * xx[2*nn+i-1];
+        }
         // Conservation of mass
         ff[i]   = mass_i[i] * xx[nn+i]*xx[i]
                 + mass_ii[i] * xx[nn+i+1]*xx[i]
                 + mass_iii[i] * xx[nn+i]*xx[i+1]
                 + mass_iv[i] * xx[nn+i+1]*xx[i+1]
-                - mass_upwind[i]
+                - mass_upwind
                 - mass_src[i];
         ff[i+1] = mass_i[i+1] * xx[nn+i]*xx[i]
                 + mass_ii[i+1] * xx[nn+i+1]*xx[i]
@@ -816,7 +804,7 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
                 + xx[nn+i+1]*xx[i+1]
                 - mass_src[i+1];
         // Conservation of momentum
-        ff[nn+i]   = momen_i[i] * xx[nn+i]*pow(xx[i],2.0)
+        ff[nn+i]  = momen_i[i] * xx[nn+i]*pow(xx[i],2.0)
                   + momen_ii[i] * xx[nn+i+1]*pow(xx[i],2.0)
                   + momen_iii[i] * xx[nn+i]*xx[i]*xx[i+1]
                   + momen_iv[i] * xx[nn+i+1]*xx[i]*xx[i+1]
@@ -824,9 +812,9 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
                   + momen_vi[i] * xx[nn+i+1]*pow(xx[i+1],2.0)
                   + momen_vii[i] * xx[2*nn+i]
                   + momen_viii[i] * xx[2*nn+i+1]
-                  - momen_upwind[i]
+                  - momen_upwind
                   - momen_src[i];
-        ff[nn+i+1] = momen_i[i+1] * xx[nn+i]*pow(xx[i],2.0)
+        ff[nn+i+1]= momen_i[i+1] * xx[nn+i]*pow(xx[i],2.0)
                   + momen_ii[i+1] * xx[nn+i+1]*pow(xx[i],2.0)
                   + momen_iii[i+1] * xx[nn+i]*xx[i]*xx[i+1]
                   + momen_iv[i+1] * xx[nn+i+1]*xx[i]*xx[i+1]
@@ -837,28 +825,28 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
                   + xx[nn+i+1]*pow(xx[i+1],2.0) + user->ctx.gamma_s*xx[2*nn+i+1]
                   - momen_src[i+1];
         // Conservation of fluid energy
-        ff[2*nn+i]   = efluid_i[i] * xx[nn+i]*pow(xx[i],3.0)
+        ff[2*nn+i]  = efluid_i[i] * xx[nn+i]*pow(xx[i],3.0)
                     + efluid_ii[i] * xx[nn+i+1]*pow(xx[i],3.0)
                     + efluid_iii[i] * xx[nn+i]*pow(xx[i],2.0)*xx[i+1]
                     + efluid_iv[i] * xx[nn+i+1]*pow(xx[i],2.0)*xx[i+1]
                     + efluid_v[i] * xx[nn+i]*xx[i]*pow(xx[i+1],2.0)
                     + efluid_vi[i] * xx[nn+i+1]*xx[i]*pow(xx[i+1],2.0)
                     + efluid_vii[i] * xx[nn+i]*pow(xx[i+1],3.0)
-                    + efluid_viii[i] * xx[nn+i+1]*pow(xx[i+1],2.0)
+                    + efluid_viii[i] * xx[nn+i+1]*pow(xx[i+1],3.0)
                     + efluid_ix[i] * xx[2*nn+i]*xx[i]
                     + efluid_x[i] * xx[2*nn+i+1]*xx[i]
                     + efluid_xi[i] * xx[2*nn+i]*xx[i+1]
                     + efluid_xii[i] * xx[2*nn+i+1]*xx[i+1]
-                    - efluid_upwind[i]
+                    - efluid_upwind
                     - efluid_src[i];
-        ff[2*nn+i+1] = efluid_i[i+1] * xx[nn+i]*pow(xx[i],3.0)
+        ff[2*nn+i+1]= efluid_i[i+1] * xx[nn+i]*pow(xx[i],3.0)
                     + efluid_ii[i+1] * xx[nn+i+1]*pow(xx[i],3.0)
                     + efluid_iii[i+1] * xx[nn+i]*pow(xx[i],2.0)*xx[i+1]
                     + efluid_iv[i+1] * xx[nn+i+1]*pow(xx[i],2.0)*xx[i+1]
                     + efluid_v[i+1] * xx[nn+i]*xx[i]*pow(xx[i+1],2.0)
                     + efluid_vi[i+1] * xx[nn+i+1]*xx[i]*pow(xx[i+1],2.0)
                     + efluid_vii[i+1] * xx[nn+i]*pow(xx[i+1],3.0)
-                    + efluid_viii[i+1] * xx[nn+i+1]*pow(xx[i+1],2.0)
+                    + efluid_viii[i+1] * xx[nn+i+1]*pow(xx[i+1],3.0)
                     + efluid_ix[i+1] * xx[2*nn+i]*xx[i]
                     + efluid_x[i+1] * xx[2*nn+i+1]*xx[i]
                     + efluid_xi[i+1] * xx[2*nn+i]*xx[i+1]

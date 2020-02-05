@@ -25,7 +25,6 @@ struct ApplicationCTX{
     Vec loc_mass_iii, glo_mass_iii;
     Vec loc_mass_iv, glo_mass_iv;
     Vec loc_mass_src, glo_mass_src;      // mms source for cons. of mass
-    Vec mass_upwind;   // GLOBAL upwind source for cons. of mass
     /* conservation of momentum */
     Vec loc_momen_i, glo_momen_i;
     Vec loc_momen_ii, glo_momen_ii;
@@ -36,7 +35,6 @@ struct ApplicationCTX{
     Vec loc_momen_vii, glo_momen_vii;
     Vec loc_momen_viii, glo_momen_viii;
     Vec loc_momen_src, glo_momen_src;     // mms source for cons. of momentum
-    Vec momen_upwind;  // GLOBAL upwind sources for cons. of momentum
     /* conservation of fluid energy */
     Vec loc_efluid_i, glo_efluid_i;
     Vec loc_efluid_ii, glo_efluid_ii;
@@ -51,7 +49,6 @@ struct ApplicationCTX{
     Vec loc_efluid_xi, glo_efluid_xi;
     Vec loc_efluid_xii, glo_efluid_xii;
     Vec loc_efluid_src, glo_efluid_src;    // mms source for cons. of momentum
-    Vec efluid_upwind; // GLOBAL upwind source for cons. of momentum
 };
 
 struct MassBasis{
@@ -104,7 +101,6 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         SNES snes;              /* nonlinear solver context */
         Vec soln, residual;     /* local solution and residual vectors */
         Mat J;                  /* Jacobian matrix */
-        PetscInt index;         /* Index number for where to pull upwind values from */
         KSP ksp;                /* linear solver context */
         PC pc;                  /* preconditioner context */
         /* Petsc Vectors for evaluated Shape Functions */
