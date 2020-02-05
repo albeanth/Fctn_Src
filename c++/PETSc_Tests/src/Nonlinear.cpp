@@ -287,6 +287,8 @@ PetscErrorCode NonLinear::NL_1D(){
         /* set vector entries equal to zero (while maintaining structure) */
         ierr = InitializeLocalRHSF(); CHKERRQ(ierr);
     }
+    /* Solve nonlinear system of equations over elem */
+    ierr = NLSolve(); CHKERRQ(ierr);
     /* print global solution */
     PetscPrintf(PETSC_COMM_WORLD, "cm\tvelocity\tdensity\n");
     for (int index = 0; index < info.nnodes; index++){
@@ -649,39 +651,42 @@ PetscErrorCode NonLinear::Local2Global(const int el){
     return ierr;
 }
 
+PetscErrorCode NonLinear::NLSolve(){
     /*
      *  create nonlinear solver context and solve equations
      */
     /* Set initial guess */
-    // ierr = VecSet(x, 1.0);CHKERRQ(ierr);
-    // Mass
-    ierr = VecSetValue(soln, 0, vL, INSERT_VALUES);CHKERRQ(ierr);
-    ierr = VecSetValue(soln, 1, vR, INSERT_VALUES);CHKERRQ(ierr);
-    // Momentum
-    ierr = VecSetValue(soln, 2, rL, INSERT_VALUES);CHKERRQ(ierr);
-    ierr = VecSetValue(soln, 3, rR, INSERT_VALUES);CHKERRQ(ierr);
-    // Energy
-    ierr = VecSetValue(soln, 4, eL, INSERT_VALUES);CHKERRQ(ierr);
-    ierr = VecSetValue(soln, 5, eR, INSERT_VALUES);CHKERRQ(ierr);
-
+    for (PetscInt i=0; i<info.nnodes; i++){
+        ierr = VecSetValue(soln, i, u(info.xnod[i]), INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i+info.nnodes, rho(info.xnod[i]), INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i+2*info.nnodes, efluid(info.xnod[i]), INSERT_VALUES); CHKERRQ(ierr);
+    }
     /* Solve nonlinear system */
     ierr = SNESSolve(snes, NULL, soln); CHKERRQ(ierr);
     // ierr = SNESView(snes, PETSC_VIEWER_STDOUT_WORLD);
+    
+    /* Map computed solution to solution vectors */
+    PetscScalar *tmp_vel, *tmp_rho, *tmp_efluid;
+    tmp_vel = (PetscScalar*) malloc(info.nnodes * sizeof(PetscScalar));
+    tmp_rho = (PetscScalar*) malloc(info.nnodes * sizeof(PetscScalar));
+    tmp_efluid = (PetscScalar*) malloc(info.nnodes * sizeof(PetscScalar));
 
-    /* Map solution to global solution */
-    PetscScalar value[6];             // array of values computed from NL solve
-    PetscInt idx[6] = {0,1,2,3,4,5};  // indices of values to pull from NL solve
-    PetscInt el = elem * 2;           // 2 equals num of unknowns per cell
-    ierr = VecGetValues(soln, 6, idx, value); CHKERRQ(ierr);
-    ierr = VecSetValue(velocity, el, value[0], INSERT_VALUES); CHKERRQ(ierr);
-    ierr = VecSetValue(velocity, el+1, value[1], INSERT_VALUES); CHKERRQ(ierr);
-    ierr = VecSetValue(density, el, value[2], INSERT_VALUES); CHKERRQ(ierr);
-    ierr = VecSetValue(density, el+1, value[3], INSERT_VALUES); CHKERRQ(ierr);
-    ierr = VecSetValue(energy, el, value[4], INSERT_VALUES); CHKERRQ(ierr);
-    ierr = VecSetValue(energy, el+1, value[5], INSERT_VALUES); CHKERRQ(ierr);
-    // PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\n", info.xnod[el], value[0], value[2], value[4]);
-    // PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\n", info.xnod[el+1], value[1], value[3], value[5]);
-    // exit(-1);
+    PetscInt *idu, *idr, *idem;
+    idu = (PetscInt*) malloc(info.nnodes * sizeof(PetscInt));
+    idr = (PetscInt *)malloc(info.nnodes * sizeof(PetscInt));
+    idem = (PetscInt *)malloc(info.nnodes * sizeof(PetscInt));
+    for (int i=0; i<info.nnodes; i++){
+        idu[i] = i;
+        idr[i] = i + info.nnodes;
+        idem[i] = i + 2*info.nnodes;
+    }
+    ierr = VecGetValues(soln, info.nnodes, idu, tmp_vel); CHKERRQ(ierr);
+    ierr = VecGetValues(soln, info.nnodes, idr, tmp_rho); CHKERRQ(ierr);
+    ierr = VecGetValues(soln, info.nnodes, idem, tmp_efluid); CHKERRQ(ierr);
+    ierr = VecSetValues(velocity, info.nnodes, idu, tmp_vel, INSERT_VALUES);
+    ierr = VecSetValues(density, info.nnodes, idu, tmp_rho, INSERT_VALUES);
+    ierr = VecSetValues(energy, info.nnodes, idu, tmp_efluid, INSERT_VALUES);
+
     return ierr;
 }
 
@@ -700,78 +705,87 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     PetscErrorCode ierr;
     const PetscScalar *xx;
     PetscScalar       *ff;
-    const int N {user->info.nnodes};
+    const int nn {user->info.nnodes};
 
     PetscScalar *mass_i, *mass_ii, *mass_iii, *mass_iv;
-    PetscScalar *mass_src;
-    mass_i = (PetscScalar*) malloc(N * sizeof(PetscScalar));
-    mass_ii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    mass_iii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    mass_iv = (PetscScalar *) malloc(N * sizeof(PetscScalar));
-    mass_src = (PetscScalar *) malloc(N * sizeof(PetscScalar));
+    PetscScalar *mass_upwind, *mass_src;
+    mass_i = (PetscScalar*) malloc(nn * sizeof(PetscScalar));
+    mass_ii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    mass_iii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    mass_iv = (PetscScalar *) malloc(nn * sizeof(PetscScalar));
+    mass_upwind = (PetscScalar *) malloc(nn * sizeof(PetscScalar));
+    mass_src = (PetscScalar *) malloc(nn * sizeof(PetscScalar));
     PetscScalar *momen_i, *momen_ii, *momen_iii, *momen_iv;
     PetscScalar *momen_v, *momen_vi, *momen_vii, *momen_viii;
-    PetscScalar *momen_src;
-    momen_i = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    momen_ii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    momen_iii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    momen_iv = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    momen_v = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    momen_vi = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    momen_vii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    momen_viii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    momen_src = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    PetscScalar *momen_upwind, *momen_src;
+    momen_i = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    momen_ii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    momen_iii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    momen_iv = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    momen_v = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    momen_vi = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    momen_vii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    momen_viii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    momen_upwind = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    momen_src = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
     PetscScalar *efluid_i, *efluid_ii, *efluid_iii, *efluid_iv;
     PetscScalar *efluid_v, *efluid_vi, *efluid_vii, *efluid_viii;
     PetscScalar *efluid_ix, *efluid_x, *efluid_xi, *efluid_xii;
-    PetscScalar *efluid_src;
-    efluid_i = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    efluid_ii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    efluid_iii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    efluid_iv = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    efluid_v = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    efluid_vi = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    efluid_vii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    efluid_viii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    efluid_ix = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    efluid_x = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    efluid_xi = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    efluid_xii = (PetscScalar *)malloc(N * sizeof(PetscScalar));
-    efluid_src = (PetscScalar *)malloc(N * sizeof(PetscScalar));
+    PetscScalar *efluid_upwind, *efluid_src;
+    efluid_i = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    efluid_ii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    efluid_iii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    efluid_iv = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    efluid_v = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    efluid_vi = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    efluid_vii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    efluid_viii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    efluid_ix = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    efluid_x = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    efluid_xi = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    efluid_xii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    efluid_upwind = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    efluid_src = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
 
     // assign petsc Vec to c array for use
     PetscInt *idx;
-    idx = (PetscInt*) malloc(N * sizeof(PetscInt));
-    for (int i=0; i<N; i++){
+    idx = (PetscInt*) malloc(nn * sizeof(PetscInt));
+    for (int i=0; i<nn; i++){
         idx[i] = i;
     }
     // conservation of mass
-    ierr = VecGetValues(user->ctx.glo_mass_i, N, idx, mass_i); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_mass_ii, N, idx, mass_ii); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_mass_iii, N, idx, mass_iii); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_mass_iv, N, idx, mass_iv); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_mass_i, nn, idx, mass_i); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_mass_ii, nn, idx, mass_ii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_mass_iii, nn, idx, mass_iii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_mass_iv, nn, idx, mass_iv); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.mass_upwind, nn, idx, mass_upwind); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_mass_src, nn, idx, mass_src); CHKERRQ(ierr);
     // conservation of momentum
-    ierr = VecGetValues(user->ctx.glo_momen_i, N, idx, momen_i); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_momen_ii, N, idx, momen_ii); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_momen_iii, N, idx, momen_iii); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_momen_iv, N, idx, momen_iv); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_momen_v, N, idx, momen_v); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_momen_vi, N, idx, momen_vi); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_momen_vii, N, idx, momen_vii); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_momen_viii, N, idx, momen_viii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_momen_i, nn, idx, momen_i); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_momen_ii, nn, idx, momen_ii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_momen_iii, nn, idx, momen_iii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_momen_iv, nn, idx, momen_iv); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_momen_v, nn, idx, momen_v); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_momen_vi, nn, idx, momen_vi); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_momen_vii, nn, idx, momen_vii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_momen_viii, nn, idx, momen_viii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.momen_upwind, nn, idx, momen_upwind); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_momen_src, nn, idx, momen_src); CHKERRQ(ierr);
     // conservation of fluid energy
-    ierr = VecGetValues(user->ctx.glo_efluid_i, N, idx, efluid_i); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_efluid_ii, N, idx, efluid_ii); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_efluid_iii, N, idx, efluid_iii); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_efluid_iv, N, idx, efluid_iv); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_efluid_v, N, idx, efluid_v); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_efluid_vi, N, idx, efluid_vi); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_efluid_vii, N, idx, efluid_vii); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_efluid_viii, N, idx, efluid_viii); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_efluid_ix, N, idx, efluid_ix); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_efluid_x, N, idx, efluid_x); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_efluid_xi, N, idx, efluid_xi); CHKERRQ(ierr);
-    ierr = VecGetValues(user->ctx.glo_efluid_xii, N, idx, efluid_xii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_i, nn, idx, efluid_i); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_ii, nn, idx, efluid_ii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_iii, nn, idx, efluid_iii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_iv, nn, idx, efluid_iv); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_v, nn, idx, efluid_v); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_vi, nn, idx, efluid_vi); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_vii, nn, idx, efluid_vii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_viii, nn, idx, efluid_viii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_ix, nn, idx, efluid_ix); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_x, nn, idx, efluid_x); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_xi, nn, idx, efluid_xi); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_xii, nn, idx, efluid_xii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.efluid_upwind, nn, idx, efluid_upwind); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_src, nn, idx, efluid_src); CHKERRQ(ierr);
 
     /*
     Get pointers to vector data.
@@ -784,12 +798,76 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     ierr = VecGetArray(f,&ff);CHKERRQ(ierr);
 
     /* Compute function */
-    // Conservation of mass
-    
-    // Conservation of Momentum
-    
-    // Conservation of Energy
-    
+    /* loop over elements by looping over node 1 of each element
+     * e.g. with liner FEs:
+     *    cell 1 -> i = 0
+     *    cell 2 -> i = 2
+     */
+    for (PetscInt i=0; i<nn; i+=user->info.order[0]){
+        // Conservation of mass
+        ff[i]   = mass_i[i] * xx[nn+i]*xx[i]
+                + mass_ii[i] * xx[nn+i+1]*xx[i]
+                + mass_iii[i] * xx[nn+i]*xx[i+1]
+                + mass_iv[i] * xx[nn+i+1]*xx[i+1]
+                - mass_upwind[i]
+                - mass_src[i];
+        ff[i+1] = mass_i[i+1] * xx[nn+i]*xx[i]
+                + mass_ii[i+1] * xx[nn+i+1]*xx[i]
+                + mass_iii[i+1] * xx[nn+i]*xx[i+1]
+                + mass_iv[i+1] * xx[nn+i+1]*xx[i+1]
+                + xx[nn+i+1]*xx[i+1]
+                - mass_src[i+1];
+        // Conservation of momentum
+        ff[nn+i]   = momen_i[i] * xx[nn+i]*pow(xx[i],2.0)
+                  + momen_ii[i] * xx[nn+i+1]*pow(xx[i],2.0)
+                  + momen_iii[i] * xx[nn+i]*xx[i]*xx[i+1]
+                  + momen_iv[i] * xx[nn+i+1]*xx[i]*xx[i+1]
+                  + momen_v[i] * xx[nn+i]*pow(xx[i+1],2.0)
+                  + momen_vi[i] * xx[nn+i+1]*pow(xx[i+1],2.0)
+                  + momen_vii[i] * xx[2*nn+i]
+                  + momen_viii[i] * xx[2*nn+i+1]
+                  - momen_upwind[i]
+                  - momen_src[i];
+        ff[nn+i+1] = momen_i[i+1] * xx[nn+i]*pow(xx[i],2.0)
+                  + momen_ii[i+1] * xx[nn+i+1]*pow(xx[i],2.0)
+                  + momen_iii[i+1] * xx[nn+i]*xx[i]*xx[i+1]
+                  + momen_iv[i+1] * xx[nn+i+1]*xx[i]*xx[i+1]
+                  + momen_v[i+1] * xx[nn+i]*pow(xx[i+1],2.0)
+                  + momen_vi[i+1] * xx[nn+i+1]*pow(xx[i+1],2.0)
+                  + momen_vii[i+1] * xx[2*nn+i]
+                  + momen_viii[i+1] * xx[2*nn+i+1]
+                  + xx[nn+i+1]*pow(xx[i+1],2.0) + user->ctx.gamma_s*xx[2*nn+i+1]
+                  - momen_src[i+1];
+        // Conservation of fluid energy
+        ff[2*nn+i]   = efluid_i[i] * xx[nn+i]*pow(xx[i],3.0)
+                    + efluid_ii[i] * xx[nn+i+1]*pow(xx[i],3.0)
+                    + efluid_iii[i] * xx[nn+i]*pow(xx[i],2.0)*xx[i+1]
+                    + efluid_iv[i] * xx[nn+i+1]*pow(xx[i],2.0)*xx[i+1]
+                    + efluid_v[i] * xx[nn+i]*xx[i]*pow(xx[i+1],2.0)
+                    + efluid_vi[i] * xx[nn+i+1]*xx[i]*pow(xx[i+1],2.0)
+                    + efluid_vii[i] * xx[nn+i]*pow(xx[i+1],3.0)
+                    + efluid_viii[i] * xx[nn+i+1]*pow(xx[i+1],2.0)
+                    + efluid_ix[i] * xx[2*nn+i]*xx[i]
+                    + efluid_x[i] * xx[2*nn+i+1]*xx[i]
+                    + efluid_xi[i] * xx[2*nn+i]*xx[i+1]
+                    + efluid_xii[i] * xx[2*nn+i+1]*xx[i+1]
+                    - efluid_upwind[i]
+                    - efluid_src[i];
+        ff[2*nn+i+1] = efluid_i[i+1] * xx[nn+i]*pow(xx[i],3.0)
+                    + efluid_ii[i+1] * xx[nn+i+1]*pow(xx[i],3.0)
+                    + efluid_iii[i+1] * xx[nn+i]*pow(xx[i],2.0)*xx[i+1]
+                    + efluid_iv[i+1] * xx[nn+i+1]*pow(xx[i],2.0)*xx[i+1]
+                    + efluid_v[i+1] * xx[nn+i]*xx[i]*pow(xx[i+1],2.0)
+                    + efluid_vi[i+1] * xx[nn+i+1]*xx[i]*pow(xx[i+1],2.0)
+                    + efluid_vii[i+1] * xx[nn+i]*pow(xx[i+1],3.0)
+                    + efluid_viii[i+1] * xx[nn+i+1]*pow(xx[i+1],2.0)
+                    + efluid_ix[i+1] * xx[2*nn+i]*xx[i]
+                    + efluid_x[i+1] * xx[2*nn+i+1]*xx[i]
+                    + efluid_xi[i+1] * xx[2*nn+i]*xx[i+1]
+                    + efluid_xii[i+1] * xx[2*nn+i+1]*xx[i+1]
+                    + 0.5*xx[nn+i+1]*pow(xx[i+1],3.0) + (1.0+user->ctx.gamma_s)*(xx[i+1]*xx[2*nn+i+1])
+                    - efluid_src[i+1];
+    }
     /* Restore vectors */
     ierr = VecRestoreArrayRead(x,&xx);CHKERRQ(ierr);
     ierr = VecRestoreArray(f,&ff);CHKERRQ(ierr);

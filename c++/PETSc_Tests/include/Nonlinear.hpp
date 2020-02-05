@@ -115,7 +115,7 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         /* Initialize Quadrature Parameters */
         QuadParams1D qps1d;
         // Private Member Functions
-        PetscErrorCode NLSolve(PetscScalar vL, PetscScalar vR, PetscScalar rL, PetscScalar rR, PetscScalar eL, PetscScalar eR);
+        PetscErrorCode NLSolve();
         PetscErrorCode InitializeLocalRHSF();
         PetscErrorCode VelRho_L2Error();
         PetscErrorCode EvalBasis(const double x, const int ord);
