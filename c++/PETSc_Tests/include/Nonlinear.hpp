@@ -24,7 +24,7 @@ struct ApplicationCTX{
     Vec loc_mass_ii, glo_mass_ii;
     Vec loc_mass_iii, glo_mass_iii;
     Vec loc_mass_iv, glo_mass_iv;
-    Vec mass_src;      // GLOBAL mms source for cons. of mass
+    Vec loc_mass_src, glo_mass_src;      // mms source for cons. of mass
     Vec mass_upwind;   // GLOBAL upwind source for cons. of mass
     /* conservation of momentum */
     Vec loc_momen_i, glo_momen_i;
@@ -35,7 +35,7 @@ struct ApplicationCTX{
     Vec loc_momen_vi, glo_momen_vi;
     Vec loc_momen_vii, glo_momen_vii;
     Vec loc_momen_viii, glo_momen_viii;
-    Vec momen_src;     // GLOBAL mms source for cons. of momentum
+    Vec loc_momen_src, glo_momen_src;     // mms source for cons. of momentum
     Vec momen_upwind;  // GLOBAL upwind sources for cons. of momentum
     /* conservation of fluid energy */
     Vec loc_efluid_i, glo_efluid_i;
@@ -50,23 +50,23 @@ struct ApplicationCTX{
     Vec loc_efluid_x, glo_efluid_x;
     Vec loc_efluid_xi, glo_efluid_xi;
     Vec loc_efluid_xii, glo_efluid_xii;
-    Vec energy_src;    // GLOBAL mms source for cons. of momentum
-    Vec energy_upwind; // GLOBAL upwind source for cons. of momentum
+    Vec loc_efluid_src, glo_efluid_src;    // mms source for cons. of momentum
+    Vec efluid_upwind; // GLOBAL upwind source for cons. of momentum
 };
 
 struct MassBasis{
   Vec i, ii, iii, iv;
-  Vec rhs;
+  Vec src;
 };
 
 struct MomentumBasis{
   Vec i, ii, iii, iv, v, vi ,vii, viii;
-  Vec rhs;
+  Vec src;
 };
 
 struct EFluidBasis {
   Vec i, ii, iii, iv, v, vi, vii, viii, ix, x, xi, xii;
-  Vec rhs;
+  Vec src;
 };
 
 // function declarations for nonlinear function and jacobian forms
