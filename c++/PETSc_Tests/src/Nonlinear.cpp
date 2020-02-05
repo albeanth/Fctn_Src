@@ -22,7 +22,7 @@ PetscErrorCode NonLinear::Initialize_NL_1D(){
     ierr = MatSetUp(J); CHKERRQ(ierr);
     // set function and jacobian functions
     ierr = SNESSetFunction(snes, residual, FormFunction, this); CHKERRQ(ierr); // set function evaluation routing and vector 
-    ierr = SNESSetJacobian(snes, J, J, FormJacobian, this); CHKERRQ(ierr); // set Jacobian matrix data strcuture and evaluation routine 
+    ierr = SNESSetJacobian(snes, J, J, NULL, NULL); CHKERRQ(ierr); // set Jacobian matrix data strcuture and evaluation routine 
     /*
     *  Customize nonlinear solver; set runtime options
     *    Set linear solver defaults for this problem. By extracting the
@@ -193,8 +193,6 @@ PetscErrorCode NonLinear::NL_1D(){
         xL = info.xnod[ info.nod[elem][0] ];
         xR = info.xnod[ info.nod[elem][info.order[elem]-1] ];
         dx = (xR-xL)/2.0;
-        loc_to_glob_map[0] = elem*info.order[elem];
-        loc_to_glob_map[1] = loc_to_glob_map[0] + (info.order[elem] - 1);
 
         for (int l1 = 0; l1 < qps1d.nw; l1++){
             /* map from ref elem to real elem */

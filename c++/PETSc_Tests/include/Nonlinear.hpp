@@ -96,7 +96,6 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         PetscErrorCode NL_1D();
     private:
         // Private Member Variables
-        PetscInt loc_to_glob_map[2]; /* c array with indices for local to global mapping */
         double xL, xR, dx, x; /* cell specific information */
         PetscScalar src_mass, src_momen, src_energy;
         PetscMPIInt size;
