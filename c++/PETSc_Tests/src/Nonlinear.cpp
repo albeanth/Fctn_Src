@@ -406,8 +406,8 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
         // Conservation of momentum
         ff[nn+i]  =   xx[nn+i]*pow(xx[i],2.0)     * (1.0/4.0)
                     + xx[nn+i+1]*pow(xx[i],2.0)   * (1.0/12.0)
-                    + xx[nn+i]*xx[i]*xx[i+1]      * (1.0/12.0)
-                    + xx[nn+i+1]*xx[i]*xx[i+1]    * (1.0/12.0)
+                    + xx[nn+i]*xx[i]*xx[i+1]      * (1.0/6.0)
+                    + xx[nn+i+1]*xx[i]*xx[i+1]    * (1.0/6.0)
                     + xx[nn+i]*pow(xx[i+1],2.0)   * (1.0/12.0)
                     + xx[nn+i+1]*pow(xx[i+1],2.0) * (1.0/4.0)
                     + xx[2*nn+i]                  * (user->ctx.gamma_s/2.0)
@@ -416,8 +416,8 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
                     - momen_src[i];
         ff[nn+i+1]= - xx[nn+i]*pow(xx[i],2.0)     * (1.0/4.0)
                     - xx[nn+i+1]*pow(xx[i],2.0)   * (1.0/12.0)
-                    - xx[nn+i]*xx[i]*xx[i+1]      * (1.0/12.0)
-                    - xx[nn+i+1]*xx[i]*xx[i+1]    * (1.0/12.0)
+                    - xx[nn+i]*xx[i]*xx[i+1]      * (1.0/6.0)
+                    - xx[nn+i+1]*xx[i]*xx[i+1]    * (1.0/6.0)
                     - xx[nn+i]*pow(xx[i+1],2.0)   * (1.0/12.0)
                     - xx[nn+i+1]*pow(xx[i+1],2.0) * (1.0/4.0)
                     - xx[2*nn+i]                  * (user->ctx.gamma_s/2.0)
