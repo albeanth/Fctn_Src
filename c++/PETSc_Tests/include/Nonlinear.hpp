@@ -19,51 +19,9 @@
 // strcut definitions
 struct ApplicationCTX{
     PetscScalar gamma_s = 5.0/3.0 - 1.0;
-    /* conservation of mass */
-    Vec loc_mass_i, glo_mass_i;
-    Vec loc_mass_ii, glo_mass_ii;
-    Vec loc_mass_iii, glo_mass_iii;
-    Vec loc_mass_iv, glo_mass_iv;
     Vec loc_mass_src, glo_mass_src;      // mms source for cons. of mass
-    /* conservation of momentum */
-    Vec loc_momen_i, glo_momen_i;
-    Vec loc_momen_ii, glo_momen_ii;
-    Vec loc_momen_iii, glo_momen_iii;
-    Vec loc_momen_iv, glo_momen_iv;
-    Vec loc_momen_v, glo_momen_v;
-    Vec loc_momen_vi, glo_momen_vi;
-    Vec loc_momen_vii, glo_momen_vii;
-    Vec loc_momen_viii, glo_momen_viii;
-    Vec loc_momen_src, glo_momen_src;     // mms source for cons. of momentum
-    /* conservation of fluid energy */
-    Vec loc_efluid_i, glo_efluid_i;
-    Vec loc_efluid_ii, glo_efluid_ii;
-    Vec loc_efluid_iii, glo_efluid_iii;
-    Vec loc_efluid_iv, glo_efluid_iv;
-    Vec loc_efluid_v, glo_efluid_v;
-    Vec loc_efluid_vi, glo_efluid_vi;
-    Vec loc_efluid_vii, glo_efluid_vii;
-    Vec loc_efluid_viii, glo_efluid_viii;
-    Vec loc_efluid_ix, glo_efluid_ix;
-    Vec loc_efluid_x, glo_efluid_x;
-    Vec loc_efluid_xi, glo_efluid_xi;
-    Vec loc_efluid_xii, glo_efluid_xii;
-    Vec loc_efluid_src, glo_efluid_src;    // mms source for cons. of momentum
-};
-
-struct MassBasis{
-  Vec i, ii, iii, iv;
-  Vec src;
-};
-
-struct MomentumBasis{
-  Vec i, ii, iii, iv, v, vi ,vii, viii;
-  Vec src;
-};
-
-struct EFluidBasis {
-  Vec i, ii, iii, iv, v, vi, vii, viii, ix, x, xi, xii;
-  Vec src;
+    Vec loc_momen_src, glo_momen_src;    // mms source for cons. of momentum
+    Vec loc_efluid_src, glo_efluid_src;  // mms source for cons. of fluid energy
 };
 
 // function declarations for nonlinear function and jacobian forms
@@ -104,9 +62,9 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         KSP ksp;                /* linear solver context */
         PC pc;                  /* preconditioner context */
         /* Petsc Vectors for evaluated Shape Functions */
-        MassBasis mass_basis;
-        MomentumBasis momen_basis;
-        EFluidBasis efluid_basis;
+        Vec mass_basis_src;
+        Vec momen_basis_src;
+        Vec efluid_basis_src;
         /* Initialize Quadrature Parameters */
         QuadParams1D qps1d;
         // Private Member Functions
