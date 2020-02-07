@@ -784,13 +784,12 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
      *    cell 1 -> i = 0
      *    cell 2 -> i = 2
      */
+    const double l{user->info.bounds[0]};
     for (PetscInt i=0; i<nn; i+=user->info.order[0]){
         if (i == 0){
-            mass_upwind = user->rho(user->info.bounds[0]) * user->u(user->info.bounds[0]);
-            momen_upwind = user->rho(user->info.bounds[0]) * pow(user->u(user->info.bounds[0]),2.0)
-                            + user->ctx.gamma_s * user->efluid(user->info.bounds[0]);
-            efluid_upwind = 0.5 * user->rho(user->info.bounds[0]) * pow(user->u(user->info.bounds[0]),3.0) 
-                            + (1.0 + user->ctx.gamma_s) * user->u(user->info.bounds[0]) * user->efluid(user->info.bounds[0]);
+            mass_upwind = user->rho(l) * user->u(l);
+            momen_upwind = user->rho(l) * pow(user->u(l),2.0) + user->ctx.gamma_s * user->efluid(l);
+            efluid_upwind = 0.5 * user->rho(l) * pow(user->u(l),3.0) + (1.0 + user->ctx.gamma_s)* user->u(l) * user->efluid(l);
         }
         else{
             mass_upwind = xx[nn+i-1] * xx[i-1];
