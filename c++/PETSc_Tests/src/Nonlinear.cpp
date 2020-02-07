@@ -180,7 +180,7 @@ PetscErrorCode NonLinear::NL_1D(){
 
     /* ------------------------------------------------------ */
     // // uncomment for viewing results of local integrations
-    // PetscScalar aa[2], bb[2], cc[2], dd[2], ee[2], ff[2], gg[2], hh[2];
+    // PetscScalar aa[2], bb[2], cc[2], dd[2], ee[2], ff[2], gg[2], hh[2], ii[2], jj[2], kk[2], ll[2];
     // PetscInt tmpIdx[2] = {0, 1};
     /* ------------------------------------------------------ */
     /* Sweep over elements and solve */
@@ -233,27 +233,34 @@ PetscErrorCode NonLinear::NL_1D(){
         // // uncomment for viewing results of local integrations
         // VecGetValues(ctx.loc_mass_i, 2, tmpIdx, aa);
         // VecGetValues(ctx.loc_mass_ii, 2, tmpIdx, bb);
-        // VecGetValues(ctx.loc_mass_iv, 2, tmpIdx, cc);
-        // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\n", aa[0], bb[0], cc[0]);
-        // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\n\n", aa[1], bb[1], cc[1]);
+        // VecGetValues(ctx.loc_mass_iii, 2, tmpIdx, cc);
+        // VecGetValues(ctx.loc_mass_iv, 2, tmpIdx, dd);
+        // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\t% .8e\n", aa[0], bb[0], cc[0], dd[0]);
+        // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\t% .8e\n\n", aa[1], bb[1], cc[1], dd[1]);
         // VecGetValues(ctx.loc_momen_i, 2, tmpIdx, aa);
         // VecGetValues(ctx.loc_momen_ii, 2, tmpIdx, bb);
-        // VecGetValues(ctx.loc_momen_iv, 2, tmpIdx, cc);
-        // VecGetValues(ctx.loc_momen_vi, 2, tmpIdx, dd);
-        // VecGetValues(ctx.loc_momen_vii, 2, tmpIdx, ee);
-        // VecGetValues(ctx.loc_momen_viii, 2, tmpIdx, ff);
-        // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\n", aa[0], bb[0], cc[0], dd[0], ee[0], ff[0]);
-        // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\n\n", aa[1], bb[1], cc[1], dd[1], ee[1], ff[1]);
-        // VecGetValues(ctx.loc_efluid_i, 2, tmpIdx, aa);
-        // VecGetValues(ctx.loc_efluid_ii, 2, tmpIdx, bb);
-        // VecGetValues(ctx.loc_efluid_iv, 2, tmpIdx, cc);
-        // VecGetValues(ctx.loc_efluid_vi, 2, tmpIdx, dd);
-        // VecGetValues(ctx.loc_efluid_viii, 2, tmpIdx, ee);
-        // VecGetValues(ctx.loc_efluid_ix, 2, tmpIdx, ff);
-        // VecGetValues(ctx.loc_efluid_x, 2, tmpIdx, gg);
-        // VecGetValues(ctx.loc_efluid_xii, 2, tmpIdx, hh);
+        // VecGetValues(ctx.loc_momen_iii, 2, tmpIdx, cc);
+        // VecGetValues(ctx.loc_momen_iv, 2, tmpIdx, dd);
+        // VecGetValues(ctx.loc_momen_v, 2, tmpIdx, ee);
+        // VecGetValues(ctx.loc_momen_vi, 2, tmpIdx, ff);
+        // VecGetValues(ctx.loc_momen_vii, 2, tmpIdx, gg);
+        // VecGetValues(ctx.loc_momen_viii, 2, tmpIdx, hh);
         // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\n", aa[0], bb[0], cc[0], dd[0], ee[0], ff[0], gg[0], hh[0]);
         // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\n\n", aa[1], bb[1], cc[1], dd[1], ee[1], ff[1], gg[1], hh[1]);
+        // VecGetValues(ctx.loc_efluid_i, 2, tmpIdx, aa);
+        // VecGetValues(ctx.loc_efluid_ii, 2, tmpIdx, bb);
+        // VecGetValues(ctx.loc_efluid_iii, 2, tmpIdx, cc);
+        // VecGetValues(ctx.loc_efluid_iv, 2, tmpIdx, dd);
+        // VecGetValues(ctx.loc_efluid_v, 2, tmpIdx, ee);
+        // VecGetValues(ctx.loc_efluid_vi, 2, tmpIdx, ff);
+        // VecGetValues(ctx.loc_efluid_vii, 2, tmpIdx, gg);
+        // VecGetValues(ctx.loc_efluid_viii, 2, tmpIdx, hh);
+        // VecGetValues(ctx.loc_efluid_ix, 2, tmpIdx, ii);
+        // VecGetValues(ctx.loc_efluid_x, 2, tmpIdx, jj);
+        // VecGetValues(ctx.loc_efluid_xi, 2, tmpIdx, kk);
+        // VecGetValues(ctx.loc_efluid_xii, 2, tmpIdx, ll);
+        // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\n", aa[0], bb[0], cc[0], dd[0], ee[0], ff[0], gg[0], hh[0], ii[0], jj[0], kk[0], ll[0]);
+        // PetscPrintf(PETSC_COMM_WORLD, "% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\n\n", aa[1], bb[1], cc[1], dd[1], ee[1], ff[1], gg[1], hh[1], ii[1], jj[1], kk[1], ll[1]);
         // exit(-1);
         /* ------------------------------------------------------ */
 
