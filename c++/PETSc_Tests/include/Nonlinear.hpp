@@ -19,12 +19,9 @@
 // strcut definitions
 struct ApplicationCTX{
     PetscScalar gamma_s = 5.0/3.0 - 1.0;
-    Vec mass_src;      /* mms source for cons. of mass */
-    Vec momen_src;     /* mms source for cons. of momentum */
-    Vec energy_src;    /* mms source for cons. of momentum */
-    PetscScalar mass_upwind;   /* upwind source for cons. of mass */
-    PetscScalar momen_upwind;  /* upwind sources for cons. of momentum */
-    PetscScalar energy_upwind; /* upwind source for cons. of momentum */
+    Vec loc_mass_src, glo_mass_src;      // mms source for cons. of mass
+    Vec loc_momen_src, glo_momen_src;    // mms source for cons. of momentum
+    Vec loc_efluid_src, glo_efluid_src;  // mms source for cons. of fluid energy
 };
 
 // function declarations for nonlinear function and jacobian forms
@@ -36,30 +33,47 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
     uses petsc snes library to solve nonlinear differential equations
     */
     public:
-        NonLinear(const int test_num, const bool hetero, const std::vector<double> &Bnds)
-        : TestFunction(test_num, hetero), SetUpGrid(Bnds), PetscFEFuncs(){};
+        NonLinear(int argc, char **args, const int test_num, const bool hetero, const std::vector<double> &Bnds)
+        : TestFunction(test_num, hetero), SetUpGrid(Bnds), PetscFEFuncs()
+        {
+          /* ------ PETSc initialization information ------ */
+          PetscInitialize(&argc, &args, (char *)0, help);
+          MPI_Comm_size(PETSC_COMM_WORLD, &size);
+        };
         // Public Member Variables
         Vec velocity; /* global solution */
         Vec density;  /* global solution */
         Vec energy;  /* global solution */
         PetscScalar l2Err_Vel, l2Err_Rho, l2Err_Em; /* l2 error */
         PetscScalar h1Err_Vel, h1Err_Rho, h1Err_Em; /* h1 error */
+        ApplicationCTX ctx; /* Instance of ApplicationCTX struct */
         // Public Member Functions
-        PetscErrorCode NL_1D(int argc, char **args);
+        PetscErrorCode NL_1D();
     private:
         // Private Member Variables
+        double xL, xR, dx, x; /* cell specific information */
+        PetscScalar src_mass, src_momen, src_energy;
+        PetscMPIInt size;
+        PetscInt N;
         PetscErrorCode ierr;    /* petsc error code */
         SNES snes;              /* nonlinear solver context */
-        Vec x, r;               /* local solution and residual vectors */
+        Vec soln, residual;     /* local solution and residual vectors */
         Mat J;                  /* Jacobian matrix */
-        ApplicationCTX ctx;     /* Instance of ApplicationCTX struct */
-        PetscInt index;         /* Index number for where to pull upwind values from */
         KSP ksp;                /* linear solver context */
         PC pc;                  /* preconditioner context */
+        /* Petsc Vectors for evaluated Shape Functions */
+        Vec mass_basis_src;
+        Vec momen_basis_src;
+        Vec efluid_basis_src;
+        /* Initialize Quadrature Parameters */
+        QuadParams1D qps1d;
         // Private Member Functions
-        PetscErrorCode NLSolve(const int elem, PetscScalar vL, PetscScalar vR, PetscScalar rL, PetscScalar rR, PetscScalar eL, PetscScalar eR);
+        PetscErrorCode NLSolve();
         PetscErrorCode InitializeLocalRHSF();
         PetscErrorCode VelRho_L2Error();
+        PetscErrorCode EvalBasis(const double x, const int ord);
+        PetscErrorCode Initialize_NL_1D();
+        PetscErrorCode Local2Global(const int el);
 };
 
 #endif

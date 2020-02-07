@@ -19,6 +19,7 @@ class SetUpGrid : public UtilityFunctions{
   public:
     SetUpGrid(const std::vector<double> &Bnds){
       info.bounds = Bnds;
+      info.nnodes = NAN;
     };
     // Member variables
     FEMGrid info;
