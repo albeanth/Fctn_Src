@@ -438,8 +438,11 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     mass_src = (PetscScalar *) malloc(nn * sizeof(PetscScalar));
     PetscScalar momen_upwind, *momen_src;
     momen_src = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
-    PetscScalar efluid_upwind, *efluid_src;
+    PetscScalar *efluid_src;
+    PetscScalar *efluid_i, *efluid_ii;
     efluid_src = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    efluid_i = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    efluid_ii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
 
     // assign petsc Vec to c array for use
     PetscInt *idx;
@@ -450,7 +453,8 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     ierr = VecGetValues(user->ctx.glo_mass_src, nn, idx, mass_src); CHKERRQ(ierr);
     ierr = VecGetValues(user->ctx.glo_momen_src, nn, idx, momen_src); CHKERRQ(ierr);
     ierr = VecGetValues(user->ctx.glo_efluid_src, nn, idx, efluid_src); CHKERRQ(ierr);
-
+    ierr = VecGetValues(user->ctx.glo_efluid_i,   nn, idx, efluid_i); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_efluid_ii,  nn, idx, efluid_ii); CHKERRQ(ierr);
     /*
     Get pointers to vector data.
         - For default PETSc vectors, VecGetArray() returns a pointer to
@@ -468,16 +472,33 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
      *    cell 2 -> i = 2
      */
     const double l{user->info.bounds[0]};
+    const double r{user->info.bounds[1]};
+    PetscScalar efluid_upwind[2], erad_upwind[2];
     for (PetscInt i=0; i<nn; i+=user->info.order[0]){
         if (i == 0){
             mass_upwind = user->rho(l) * user->u(l);
-            momen_upwind = user->rho(l) * pow(user->u(l),2.0) + user->ctx.gamma_s * user->efluid(l);
-            efluid_upwind = 0.5 * user->rho(l) * pow(user->u(l),3.0) + (1.0 + user->ctx.gamma_s)* user->u(l) * user->efluid(l);
+            /* fluid energy upwind values for left and right edge */
+            efluid_upwind[0] = -0.5 * user->rho(l) * pow(user->u(l),3.0) - (1.0 + user->ctx.gamma_s) * user->u(l) * user->efluid(l) + 0.0; // + 0.0 -> net current at left edge is zero for reflecting BCs
+            efluid_upwind[1] =  0.5 * xx[nn+i+1] * pow(xx[i+1],3.0) + (1.0+user->ctx.gamma_s)*xx[i+1]*xx[2*nn+i+1]
+                                + (xx[3*nn+i+1]/4.0 - user->c/(6.0*user->sig_r(user->info.xnod[i+1])) * (xx[3*nn+i]-xx[3*nn+i+1])/(user->info.xnod[i+1] - user->info.xnod[i]) )
+                                - (xx[3*nn+i+2]/4.0 + user->c/(6.0*user->sig_r(user->info.xnod[i+2])) * (xx[3*nn+i+2]-xx[3*nn+i+3])/(user->info.xnod[i+3]-user->info.xnod[i+2]) );
+        }
+        if (i == nn-1){
+            /* fluid energy upwind values for left and right */
+            efluid_upwind[0] = -0.5 * xx[nn+i-1] * pow(xx[i-1],3.0) - (1.0 + user->ctx.gamma_s) * xx[i-1] * xx[2*nn+i-1]
+                                - ( xx[3*nn+i-1]/4.0 - user->c/(6.0*user->sig_r(user->info.xnod[i-1])) * (xx[3*nn+i-2] - xx[3*nn+i-1])/(user->info.xnod[i-1] - user->info.xnod[i-2]) )
+                                + ( xx[3*nn+i]/4.0   + user->c/(6.0*user->sig_r(user->info.xnod[i]))   * (xx[3*nn+i] - xx[3*nn+i+1])/(user->info.xnod[i+1] - user->info.xnod[i]) );
+            efluid_upwind[1] =  0.5 * user->rho(r) * pow(user->u(r),3.0) + (1.0+user->ctx.gamma_s)*user->u(r)*user->efluid(r) + 0.0; // + 0.0 -> net current at right edge is zero for reflecting BCs
         }
         else{
             mass_upwind = xx[nn+i-1] * xx[i-1];
-            momen_upwind = xx[nn+i-1] * pow(xx[i-1],2.0) + user->ctx.gamma_s * xx[2*nn+i-1];
-            efluid_upwind = 0.5 * xx[nn+i-1] * pow(xx[i-1],3.0) + (1.0 + user->ctx.gamma_s) * xx[i-1] * xx[2*nn+i-1];
+            /* fluid energy upwind values for left and right edge */
+            efluid_upwind[0] = -0.5 * xx[nn+i-1] * pow(xx[i-1],3.0) - (1.0 + user->ctx.gamma_s) * xx[i-1] * xx[2*nn+i-1]
+                                - ( xx[3*nn+i-1]/4.0 - user->c/(6.0*user->sig_r(user->info.xnod[i-1])) * (xx[3*nn+i-2] - xx[3*nn+i-1])/(user->info.xnod[i-1] - user->info.xnod[i-2]) ) 
+                                + ( xx[3*nn+i]/4.0   + user->c/(6.0*user->sig_r(user->info.xnod[i]))   * (xx[3*nn+i] - xx[3*nn+i+1])/(user->info.xnod[i+1] - user->info.xnod[i]) );
+            efluid_upwind[1] =  0.5 * xx[nn+i+1] * pow(xx[i+1],3.0) + (1.0+user->ctx.gamma_s)*xx[i+1]*xx[2*nn+i+1]
+                                + (xx[3*nn+i+1]/4.0 - user->c/(6.0*user->sig_r(user->info.xnod[i+1])) * (xx[3*nn+i]-xx[3*nn+i+1])/(user->info.xnod[i+1] - user->info.xnod[i]) )
+                                - (xx[3*nn+i+2]/4.0 + user->c/(6.0*user->sig_r(user->info.xnod[i+2])) * (xx[3*nn+i+2]-xx[3*nn+i+3])/(user->info.xnod[i+3]-user->info.xnod[i+2]) );
         }
         // Conservation of mass
         ff[i]   =   xx[nn+i]*xx[i]     * (1.0/3.0)
@@ -526,7 +547,9 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
                       + xx[2*nn+i+1]*xx[i]                * (1.0/6.0) * (1.0+user->ctx.gamma_s)
                       + xx[2*nn+i]*xx[i+1]                * (1.0/6.0) * (1.0+user->ctx.gamma_s)
                       + xx[2*nn+i+1]*xx[i+1]              * (1.0/3.0) * (1.0+user->ctx.gamma_s)
-                      - efluid_upwind
+                      + xx[3*nn+i]*efluid_i[i]
+                      + xx[3*nn+i+1]*efluid_ii[i]
+                      + efluid_upwind[0]
                       - efluid_src[i];
         ff[2*nn+i+1]= - xx[nn+i]*pow(xx[i],3.0)           * (1.0/10.0)
                       - xx[nn+i+1]*pow(xx[i],3.0)         * (1.0/40.0)
@@ -540,7 +563,9 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
                       - xx[2*nn+i+1]*xx[i]                * (1.0/6.0) * (1.0+user->ctx.gamma_s)
                       - xx[2*nn+i]*xx[i+1]                * (1.0/6.0) * (1.0+user->ctx.gamma_s)
                       - xx[2*nn+i+1]*xx[i+1]              * (1.0/3.0) * (1.0+user->ctx.gamma_s)
-                      + 0.5*xx[nn+i+1]*pow(xx[i+1],3.0) + (1.0+user->ctx.gamma_s)*(xx[i+1]*xx[2*nn+i+1])
+                      + xx[3*nn+i]*efluid_i[i+1]
+                      + xx[3*nn+i+1]*efluid_ii[i+1]
+                      + efluid_upwind[1]
                       - efluid_src[i+1];
     }
     /* Restore vectors */
