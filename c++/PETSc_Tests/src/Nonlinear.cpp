@@ -443,6 +443,13 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     efluid_src = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
     efluid_i = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
     efluid_ii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    PetscScalar *erad_src;
+    PetscScalar *erad_i, *erad_ii, *erad_iii, *erad_iv;
+    erad_src = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    erad_i = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    erad_ii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    erad_iii = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    erad_iv = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
 
     // assign petsc Vec to c array for use
     PetscInt *idx;
@@ -455,6 +462,11 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     ierr = VecGetValues(user->ctx.glo_efluid_src, nn, idx, efluid_src); CHKERRQ(ierr);
     ierr = VecGetValues(user->ctx.glo_efluid_i,   nn, idx, efluid_i); CHKERRQ(ierr);
     ierr = VecGetValues(user->ctx.glo_efluid_ii,  nn, idx, efluid_ii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_erad_src, nn, idx, erad_src); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_erad_i,   nn, idx, erad_i); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_erad_ii,  nn, idx, erad_ii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_erad_iii, nn, idx, erad_iii); CHKERRQ(ierr);
+    ierr = VecGetValues(user->ctx.glo_erad_iv,  nn, idx, erad_iv); CHKERRQ(ierr);
     /*
     Get pointers to vector data.
         - For default PETSc vectors, VecGetArray() returns a pointer to
@@ -482,6 +494,10 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
             efluid_upwind[1] =  0.5 * xx[nn+i+1] * pow(xx[i+1],3.0) + (1.0+user->ctx.gamma_s)*xx[i+1]*xx[2*nn+i+1]
                                 + (xx[3*nn+i+1]/4.0 - user->c/(6.0*user->sig_r(user->info.xnod[i+1])) * (xx[3*nn+i]-xx[3*nn+i+1])/(user->info.xnod[i+1] - user->info.xnod[i]) )
                                 - (xx[3*nn+i+2]/4.0 + user->c/(6.0*user->sig_r(user->info.xnod[i+2])) * (xx[3*nn+i+2]-xx[3*nn+i+3])/(user->info.xnod[i+3]-user->info.xnod[i+2]) );
+            /* radiation energy upwind values for left and right edge */
+            erad_upwind[0] = 0.0; // net current at left edge is zero for reflecting BCs
+            erad_upwind[1] =   ( xx[3*nn+i+1]/4.0 - user->c/(6.0*user->sig_r(user->info.xnod[i+1])) * (xx[3*nn+i] - xx[3*nn+i+1])/(user->info.xnod[i+1] - user->info.xnod[i]))
+                             - ( xx[3*nn+i+2]/4.0 + user->c/(6.0*user->sig_r(user->info.xnod[i+2])) * (xx[3*nn+i+2] - xx[3*nn+i+3])/(user->info.xnod[i+3] - user->info.xnod[i+2])) ;
         }
         if (i == nn-1){
             /* fluid energy upwind values for left and right */
@@ -489,6 +505,10 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
                                 - ( xx[3*nn+i-1]/4.0 - user->c/(6.0*user->sig_r(user->info.xnod[i-1])) * (xx[3*nn+i-2] - xx[3*nn+i-1])/(user->info.xnod[i-1] - user->info.xnod[i-2]) )
                                 + ( xx[3*nn+i]/4.0   + user->c/(6.0*user->sig_r(user->info.xnod[i]))   * (xx[3*nn+i] - xx[3*nn+i+1])/(user->info.xnod[i+1] - user->info.xnod[i]) );
             efluid_upwind[1] =  0.5 * user->rho(r) * pow(user->u(r),3.0) + (1.0+user->ctx.gamma_s)*user->u(r)*user->efluid(r) + 0.0; // + 0.0 -> net current at right edge is zero for reflecting BCs
+            /* radiation energy upwind values for left and right edge */
+            erad_upwind[0] = - ( xx[3*nn+i-1]/4.0 - user->c/(6.0*user->sig_r(user->info.xnod[i-1])) * (xx[3*nn+i-2] - xx[3*nn+i-1])/(user->info.xnod[i-1] - user->info.xnod[i-2]) )
+                             + ( xx[3*nn+i]/4.0   + user->c/(6.0*user->sig_r(user->info.xnod[i]))   * (xx[3*nn+i] - xx[3*nn+i+1])/(user->info.xnod[i+1] - user->info.xnod[i]) );
+            erad_upwind[1] = 0.0; // net current at left edge is zero for reflecting BCs
         }
         else{
             mass_upwind = xx[nn+i-1] * xx[i-1];
@@ -499,6 +519,11 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
             efluid_upwind[1] =  0.5 * xx[nn+i+1] * pow(xx[i+1],3.0) + (1.0+user->ctx.gamma_s)*xx[i+1]*xx[2*nn+i+1]
                                 + (xx[3*nn+i+1]/4.0 - user->c/(6.0*user->sig_r(user->info.xnod[i+1])) * (xx[3*nn+i]-xx[3*nn+i+1])/(user->info.xnod[i+1] - user->info.xnod[i]) )
                                 - (xx[3*nn+i+2]/4.0 + user->c/(6.0*user->sig_r(user->info.xnod[i+2])) * (xx[3*nn+i+2]-xx[3*nn+i+3])/(user->info.xnod[i+3]-user->info.xnod[i+2]) );
+            /* radiation energy upwind values for left and right edge */
+            erad_upwind[0] = - ( xx[3*nn+i-1]/4.0 - user->c/(6.0*user->sig_r(user->info.xnod[i-1])) * (xx[3*nn+i-2] - xx[3*nn+i-1])/(user->info.xnod[i-1] - user->info.xnod[i-2]) )
+                             + ( xx[3*nn+i]/4.0   + user->c/(6.0*user->sig_r(user->info.xnod[i]))   * (xx[3*nn+i] - xx[3*nn+i+1])/(user->info.xnod[i+1] - user->info.xnod[i]) );
+            erad_upwind[1] =   ( xx[3*nn+i+1]/4.0 - user->c/(6.0*user->sig_r(user->info.xnod[i+1])) * (xx[3*nn+i] - xx[3*nn+i+1])/(user->info.xnod[i+1] - user->info.xnod[i]))
+                             - ( xx[3*nn+i+2]/4.0 + user->c/(6.0*user->sig_r(user->info.xnod[i+2])) * (xx[3*nn+i+2] - xx[3*nn+i+3])/(user->info.xnod[i+3] - user->info.xnod[i+2])) ;
         }
         // Conservation of mass
         ff[i]   =   xx[nn+i]*xx[i]     * (1.0/3.0)
@@ -567,6 +592,23 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
                       + xx[3*nn+i+1]*efluid_ii[i+1]
                       + efluid_upwind[1]
                       - efluid_src[i+1];
+        // radiation energy
+        ff[3*nn+i]   =   xx[3*nn+i] * erad_i[i]
+                       + xx[3*nn+i+1] * erad_ii[i]
+                       - xx[2*nn+i] * erad_iii[i]
+                       - xx[2*nn+i+1] * erad_iv[i]
+                       + xx[3*nn+i] * erad_iii[i]
+                       + xx[3*nn+i+1] * erad_iv[i]
+                       + erad_upwind[0]
+                       - erad_src[i];
+        ff[3*nn+i+1] =   xx[3*nn+i] * erad_i[i+1]
+                       + xx[3*nn+i+1] * erad_ii[i+1]
+                       - xx[2*nn+i] * erad_iii[i+1]
+                       - xx[2*nn+i+1] * erad_iv[i+1]
+                       + xx[3*nn+i] * erad_iii[i+1]
+                       + xx[3*nn+i+1] * erad_iv[i+1]
+                       + erad_upwind[1]
+                       - erad_src[i+1];
     }
     /* Restore vectors */
     ierr = VecRestoreArrayRead(x,&xx);CHKERRQ(ierr);
