@@ -22,6 +22,13 @@ struct ApplicationCTX{
     Vec loc_mass_src, glo_mass_src;      // mms source for cons. of mass
     Vec loc_momen_src, glo_momen_src;    // mms source for cons. of momentum
     Vec loc_efluid_src, glo_efluid_src;  // mms source for cons. of fluid energy
+    Vec loc_efluid_i, glo_efluid_i;      // kernel i for cons. of fluid energy
+    Vec loc_efluid_ii, glo_efluid_ii;    // kernel ii for cons. of fluid energy
+    Vec loc_erad_i, glo_erad_i;          // kernel i for radiation diffusion
+    Vec loc_erad_ii, glo_erad_ii;        // kernel ii for radiation diffusion
+    Vec loc_erad_iii, glo_erad_iii;      // kernel iii for radiation diffusion
+    Vec loc_erad_iv, glo_erad_iv;        // kernel iv for radiation diffusion
+    Vec loc_erad_src, glo_erad_src;      // mms source for rad energy
 };
 
 // function declarations for nonlinear function and jacobian forms
@@ -43,7 +50,8 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         // Public Member Variables
         Vec velocity; /* global solution */
         Vec density;  /* global solution */
-        Vec energy;  /* global solution */
+        Vec FluidEnergy;     /* global solution */
+        Vec RadEnergy;     /* global solution */
         PetscScalar l2Err_Vel, l2Err_Rho, l2Err_Em; /* l2 error */
         PetscScalar h1Err_Vel, h1Err_Rho, h1Err_Em; /* h1 error */
         ApplicationCTX ctx; /* Instance of ApplicationCTX struct */
@@ -52,7 +60,7 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
     private:
         // Private Member Variables
         double xL, xR, dx, x; /* cell specific information */
-        PetscScalar src_mass, src_momen, src_energy;
+        PetscScalar src_mass, src_momen, src_efluid, src_erad;
         PetscMPIInt size;
         PetscInt N;
         PetscErrorCode ierr;    /* petsc error code */
@@ -65,6 +73,13 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         Vec mass_basis_src;
         Vec momen_basis_src;
         Vec efluid_basis_src;
+        Vec efluid_basis_i;
+        Vec efluid_basis_ii;
+        Vec erad_basis_src;
+        Vec erad_basis_i;
+        Vec erad_basis_ii;
+        Vec erad_basis_iii;
+        Vec erad_basis_iv;
         /* Initialize Quadrature Parameters */
         QuadParams1D qps1d;
         // Private Member Functions

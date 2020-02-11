@@ -7,7 +7,7 @@ PetscErrorCode NonLinear::Initialize_NL_1D(){
     if (info.nnodes == NAN){
         SETERRQ(PETSC_COMM_WORLD,1,"Please build mesh via SetUpGrid::add_DFEMGrid before executing Initialize_NL_1D()!");
     }
-    N = info.nnodes * 3;
+    N = info.nnodes * 4;
     /* ------ Initialize SNES ------ */
     ierr = SNESCreate(PETSC_COMM_WORLD, &snes); CHKERRQ(ierr); // create context 
     // create solution vector
@@ -50,12 +50,26 @@ PetscErrorCode NonLinear::Initialize_NL_1D(){
     ierr = VecSetFromOptions(mass_basis_src); CHKERRQ(ierr);
     ierr = VecDuplicate(mass_basis_src, &momen_basis_src); CHKERRQ(ierr);
     ierr = VecDuplicate(mass_basis_src, &efluid_basis_src); CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis_src, &efluid_basis_i); CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis_src, &efluid_basis_ii); CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis_src, &erad_basis_src); CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis_src, &erad_basis_i); CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis_src, &erad_basis_ii); CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis_src, &erad_basis_iii); CHKERRQ(ierr);
+    ierr = VecDuplicate(mass_basis_src, &erad_basis_iv); CHKERRQ(ierr);
     
     ierr = VecCreate(PETSC_COMM_WORLD, &ctx.loc_mass_src); CHKERRQ(ierr);
     ierr = VecSetSizes(ctx.loc_mass_src, PETSC_DECIDE, info.order[0]); CHKERRQ(ierr);
     ierr = VecSetFromOptions(ctx.loc_mass_src); CHKERRQ(ierr);
     ierr = VecDuplicate(ctx.loc_mass_src, &ctx.loc_momen_src); CHKERRQ(ierr);
     ierr = VecDuplicate(ctx.loc_mass_src, &ctx.loc_efluid_src); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_src, &ctx.loc_efluid_i); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_src, &ctx.loc_efluid_ii); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_src, &ctx.loc_erad_src); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_src, &ctx.loc_erad_i); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_src, &ctx.loc_erad_ii); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_src, &ctx.loc_erad_iii); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.loc_mass_src, &ctx.loc_erad_iv); CHKERRQ(ierr);
 
     // ------ Global FE vec initialization ------
     // source information
@@ -64,10 +78,18 @@ PetscErrorCode NonLinear::Initialize_NL_1D(){
     ierr = VecSetFromOptions(ctx.glo_mass_src); CHKERRQ(ierr);
     ierr = VecDuplicate(ctx.glo_mass_src, &ctx.glo_momen_src); CHKERRQ(ierr);
     ierr = VecDuplicate(ctx.glo_mass_src, &ctx.glo_efluid_src); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.glo_mass_src, &ctx.glo_efluid_i); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.glo_mass_src, &ctx.glo_efluid_ii); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.glo_mass_src, &ctx.glo_erad_src); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.glo_mass_src, &ctx.glo_erad_i); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.glo_mass_src, &ctx.glo_erad_ii); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.glo_mass_src, &ctx.glo_erad_iii); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.glo_mass_src, &ctx.glo_erad_iv); CHKERRQ(ierr);
     // solution vectors
     ierr = VecDuplicate(ctx.glo_mass_src, &velocity); CHKERRQ(ierr);
     ierr = VecDuplicate(ctx.glo_mass_src, &density); CHKERRQ(ierr);
-    ierr = VecDuplicate(ctx.glo_mass_src, &energy); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.glo_mass_src, &FluidEnergy); CHKERRQ(ierr);
+    ierr = VecDuplicate(ctx.glo_mass_src, &RadEnergy); CHKERRQ(ierr);
     return ierr;
 }
 
@@ -84,19 +106,22 @@ PetscErrorCode NonLinear::NL_1D(){
     // assign left side BC (hydro equations)
     ierr = VecSetValue(velocity, 0, u(info.bounds[0]), INSERT_VALUES); CHKERRQ(ierr);
     ierr = VecSetValue(density, 0, rho(info.bounds[0]), INSERT_VALUES); CHKERRQ(ierr);
-    ierr = VecSetValue(energy, 0, efluid(info.bounds[0]), INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecSetValue(FluidEnergy, 0, efluid(info.bounds[0]), INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecSetValue(RadEnergy, 0, erad(info.bounds[0]), INSERT_VALUES); CHKERRQ(ierr);
     // assemble vectors
     ierr = VecAssemblyBegin(velocity); CHKERRQ(ierr); 
     ierr = VecAssemblyEnd(velocity); CHKERRQ(ierr);
     ierr = VecAssemblyBegin(density); CHKERRQ(ierr); 
     ierr = VecAssemblyEnd(density); CHKERRQ(ierr);
-    ierr = VecAssemblyBegin(energy); CHKERRQ(ierr); 
-    ierr = VecAssemblyEnd(energy); CHKERRQ(ierr);   
+    ierr = VecAssemblyBegin(FluidEnergy); CHKERRQ(ierr); 
+    ierr = VecAssemblyEnd(FluidEnergy); CHKERRQ(ierr);
+    ierr = VecAssemblyBegin(RadEnergy); CHKERRQ(ierr); 
+    ierr = VecAssemblyEnd(RadEnergy); CHKERRQ(ierr);
 
     ierr = InitializeLocalRHSF(); CHKERRQ(ierr);
     get1D_QPs(info.maxord, qps1d); // set qps
 
-    /* Sweep over elements and solve */
+    /* Integrate over each cell locally and store to global vector */
     for (int elem = 0; elem < info.nels; elem ++){
         xL = info.xnod[ info.nod[elem][0] ];
         xR = info.xnod[ info.nod[elem][info.order[elem]-1] ];
@@ -110,11 +135,19 @@ PetscErrorCode NonLinear::NL_1D(){
             /* evaluate known functions and integrate */
             src_mass = MMS_Src_Mass(x);
             src_momen = MMS_Src_Momentum(x);
-            src_energy = MMS_Src_Energy(x);
+            src_efluid = MMS_Src_EFluid(x);
+            src_erad = MMS_Src_ERad(x);
 
             ierr = VecAXPY(ctx.loc_mass_src, src_mass * qps1d.w[l1] * dx, mass_basis_src); CHKERRQ(ierr);
             ierr = VecAXPY(ctx.loc_momen_src, src_momen * qps1d.w[l1] * dx, momen_basis_src); CHKERRQ(ierr);
-            ierr = VecAXPY(ctx.loc_efluid_src, src_energy * qps1d.w[l1] * dx, efluid_basis_src); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_efluid_src, src_efluid * qps1d.w[l1] * dx, efluid_basis_src); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_efluid_i,  c/(3.0*sig_r(x)) * qps1d.w[l1] * dx / pow(dx,2.0), efluid_basis_i); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_efluid_ii, c/(3.0*sig_r(x)) * qps1d.w[l1] * dx / pow(dx,2.0), efluid_basis_ii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_erad_src, src_erad * qps1d.w[l1] * dx / pow(dx,2.0), erad_basis_src); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_erad_i,  c/(3.0*sig_r(x)) * qps1d.w[l1] * dx / pow(dx,2.0), erad_basis_i); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_erad_ii, c/(3.0*sig_r(x)) * qps1d.w[l1] * dx / pow(dx,2.0), erad_basis_ii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_erad_iii, c*sig_r(x) * qps1d.w[l1] * dx, erad_basis_iii); CHKERRQ(ierr);
+            ierr = VecAXPY(ctx.loc_erad_iv,  c*sig_r(x) * qps1d.w[l1] * dx, erad_basis_iv); CHKERRQ(ierr);
         }
 
         /* Map local vectors to global vectors */
@@ -126,13 +159,14 @@ PetscErrorCode NonLinear::NL_1D(){
     /* Solve nonlinear system of equations over elem */
     ierr = NLSolve(); CHKERRQ(ierr);
     /* print global solution */
-    PetscScalar tmp_vel, tmp_rho, tmp_efluid;
+    PetscScalar tmp_vel, tmp_rho, tmp_efluid, tmp_erad;
     PetscPrintf(PETSC_COMM_WORLD, "cm\tvelocity\tdensity\n");
     for (int index = 0; index < info.nnodes; index++){
         VecGetValues(velocity, 1, &index, &tmp_vel);
         VecGetValues(density, 1, &index, &tmp_rho);
-        VecGetValues(energy, 1, &index, &tmp_efluid);
-        PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\n", info.xnod[index], tmp_vel, tmp_rho, tmp_efluid, u(info.xnod[index]), rho(info.xnod[index]), efluid(info.xnod[index]) );
+        VecGetValues(FluidEnergy, 1, &index, &tmp_efluid);
+        VecGetValues(RadEnergy, 1, &index, &tmp_erad);
+        PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\t% .8e\n", info.xnod[index], tmp_vel, tmp_rho, tmp_efluid, tmp_erad, u(info.xnod[index]), rho(info.xnod[index]), efluid(info.xnod[index]), erad(info.xnod[index]) );
         if (index % 2 == 1){
             PetscPrintf(PETSC_COMM_WORLD,"\n");
         }
@@ -159,9 +193,20 @@ PetscErrorCode NonLinear::EvalBasis(const double x, const int ord){
         b1p =-0.5;
         b2p = 0.5;
         PetscScalar src[] = {b1, b2};
+        PetscScalar i[]   = {b1p*b1p, b1p*b2p};
+        PetscScalar ii[]  = {b2p*b1p, b2p*b2p};
+        PetscScalar iii[] = {b1*b1, b1*b2};
+        PetscScalar iv[]  = {b1*b2, b2*b2};
         ierr = VecSetValues(mass_basis_src, 2, idx, src, INSERT_VALUES); CHKERRQ(ierr);
         ierr = VecSetValues(momen_basis_src, 2, idx, src, INSERT_VALUES); CHKERRQ(ierr);
         ierr = VecSetValues(efluid_basis_src, 2, idx, src, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(erad_basis_src, 2, idx, src, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(efluid_basis_i, 2, idx, i, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(efluid_basis_ii, 2, idx, ii, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(erad_basis_i, 2, idx, i, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(erad_basis_ii, 2, idx, ii, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(erad_basis_iii, 2, idx, iii, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValues(erad_basis_iv, 2, idx, iv, INSERT_VALUES); CHKERRQ(ierr);
     }
     else{
         PetscPrintf(PETSC_COMM_WORLD, "\n\nOrder = %d shape function does not exist.\n\n",ord);
@@ -225,7 +270,7 @@ PetscErrorCode NonLinear::VelRho_L2Error(){
                 mynum = info.nod[elem][k];
                 ierr = VecGetValues(velocity, 1, &mynum, &tmp_vel); CHKERRQ(ierr);
                 ierr = VecGetValues(density, 1, &mynum, &tmp_rho); CHKERRQ(ierr);
-                ierr = VecGetValues(energy, 1, &mynum, &tmp_em); CHKERRQ(ierr);
+                ierr = VecGetValues(FluidEnergy, 1, &mynum, &tmp_em); CHKERRQ(ierr);
                 ierr = VecGetValues(shape1d.psi, 1, &k, &tmp_b); CHKERRQ(ierr);
                 ierr = VecGetValues(shape1d.dpsi, 1, &k, &tmp_bp); CHKERRQ(ierr);
                 uhval += tmp_vel * tmp_b;
@@ -266,8 +311,31 @@ PetscErrorCode NonLinear::InitializeLocalRHSF(){
     ierr = VecAssemblyEnd(ctx.loc_momen_src); CHKERRQ(ierr);
     // conservation of fluid energy
     ierr = VecSet(ctx.loc_efluid_src, 0.0); CHKERRQ(ierr);
+    ierr = VecSet(ctx.loc_efluid_i, 0.0); CHKERRQ(ierr);
+    ierr = VecSet(ctx.loc_efluid_ii, 0.0); CHKERRQ(ierr);
     ierr = VecAssemblyBegin(ctx.loc_efluid_src); CHKERRQ(ierr);
+    ierr = VecAssemblyBegin(ctx.loc_efluid_i); CHKERRQ(ierr);
+    ierr = VecAssemblyBegin(ctx.loc_efluid_ii); CHKERRQ(ierr);
     ierr = VecAssemblyEnd(ctx.loc_efluid_src); CHKERRQ(ierr);
+    ierr = VecAssemblyEnd(ctx.loc_efluid_i); CHKERRQ(ierr);    
+    ierr = VecAssemblyEnd(ctx.loc_efluid_ii); CHKERRQ(ierr);    
+    // radiation diffusion
+    ierr = VecSet(ctx.loc_erad_src, 0.0); CHKERRQ(ierr);
+    ierr = VecSet(ctx.loc_erad_i, 0.0); CHKERRQ(ierr);
+    ierr = VecSet(ctx.loc_erad_ii, 0.0); CHKERRQ(ierr);
+    ierr = VecSet(ctx.loc_erad_iii, 0.0); CHKERRQ(ierr);
+    ierr = VecSet(ctx.loc_erad_iv, 0.0); CHKERRQ(ierr);
+    ierr = VecAssemblyBegin(ctx.loc_erad_src); CHKERRQ(ierr);
+    ierr = VecAssemblyBegin(ctx.loc_erad_i); CHKERRQ(ierr);
+    ierr = VecAssemblyBegin(ctx.loc_erad_ii); CHKERRQ(ierr);
+    ierr = VecAssemblyBegin(ctx.loc_erad_iii); CHKERRQ(ierr);
+    ierr = VecAssemblyBegin(ctx.loc_erad_iv); CHKERRQ(ierr);
+    ierr = VecAssemblyEnd(ctx.loc_erad_src); CHKERRQ(ierr);
+    ierr = VecAssemblyEnd(ctx.loc_erad_i); CHKERRQ(ierr);
+    ierr = VecAssemblyEnd(ctx.loc_erad_ii); CHKERRQ(ierr);
+    ierr = VecAssemblyEnd(ctx.loc_erad_iii); CHKERRQ(ierr);
+    ierr = VecAssemblyEnd(ctx.loc_erad_iv); CHKERRQ(ierr);
+
     return ierr;
 }
 
@@ -286,6 +354,21 @@ PetscErrorCode NonLinear::Local2Global(const int el){
     ierr = VecSetValues(ctx.glo_momen_src, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
     ierr = VecGetValues(ctx.loc_efluid_src, 2, loc_idx, loc_val); CHKERRQ(ierr);
     ierr = VecSetValues(ctx.glo_efluid_src, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_erad_src, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_erad_src, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_efluid_i, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_efluid_i, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_efluid_ii, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_efluid_ii, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_erad_i, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_erad_i, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_erad_ii, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_erad_ii, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_erad_iii, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_erad_iii, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = VecGetValues(ctx.loc_erad_iv, 2, loc_idx, loc_val); CHKERRQ(ierr);
+    ierr = VecSetValues(ctx.glo_erad_iv, 2, glo_idx, loc_val, INSERT_VALUES); CHKERRQ(ierr);
+
     return ierr;
 }
 
@@ -295,35 +378,41 @@ PetscErrorCode NonLinear::NLSolve(){
      */
     /* Set initial guess */
     for (PetscInt i=0; i<info.nnodes; i++){
-        ierr = VecSetValue(soln, i, u(info.xnod[i]), INSERT_VALUES); CHKERRQ(ierr);
-        ierr = VecSetValue(soln, i+info.nnodes, rho(info.xnod[i]), INSERT_VALUES); CHKERRQ(ierr);
-        ierr = VecSetValue(soln, i+2*info.nnodes, efluid(info.xnod[i]), INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i, u(0.0), INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i+info.nnodes, rho(0.0), INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i+2*info.nnodes, efluid(0.0), INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i+3*info.nnodes, erad(0.0), INSERT_VALUES); CHKERRQ(ierr);
     }
     /* Solve nonlinear system */
     ierr = SNESSolve(snes, NULL, soln); CHKERRQ(ierr);
     // ierr = SNESView(snes, PETSC_VIEWER_STDOUT_WORLD);
     
     /* Map computed solution to solution vectors */
-    PetscScalar *tmp_vel, *tmp_rho, *tmp_efluid;
+    PetscScalar *tmp_vel, *tmp_rho, *tmp_efluid, *tmp_erad;
     tmp_vel = (PetscScalar*) malloc(info.nnodes * sizeof(PetscScalar));
     tmp_rho = (PetscScalar*) malloc(info.nnodes * sizeof(PetscScalar));
     tmp_efluid = (PetscScalar*) malloc(info.nnodes * sizeof(PetscScalar));
+    tmp_erad = (PetscScalar*) malloc(info.nnodes * sizeof(PetscScalar));
 
-    PetscInt *idu, *idr, *idem;
+    PetscInt *idu, *idr, *idem, *iderad;
     idu = (PetscInt*) malloc(info.nnodes * sizeof(PetscInt));
     idr = (PetscInt *)malloc(info.nnodes * sizeof(PetscInt));
     idem = (PetscInt *)malloc(info.nnodes * sizeof(PetscInt));
+    iderad = (PetscInt *)malloc(info.nnodes * sizeof(PetscInt));
     for (int i=0; i<info.nnodes; i++){
         idu[i] = i;
         idr[i] = i + info.nnodes;
         idem[i] = i + 2*info.nnodes;
+        iderad[i] = i + 3*info.nnodes;
     }
     ierr = VecGetValues(soln, info.nnodes, idu, tmp_vel); CHKERRQ(ierr);
     ierr = VecGetValues(soln, info.nnodes, idr, tmp_rho); CHKERRQ(ierr);
     ierr = VecGetValues(soln, info.nnodes, idem, tmp_efluid); CHKERRQ(ierr);
+    ierr = VecGetValues(soln, info.nnodes, iderad, tmp_erad); CHKERRQ(ierr);
     ierr = VecSetValues(velocity, info.nnodes, idu, tmp_vel, INSERT_VALUES);
     ierr = VecSetValues(density, info.nnodes, idu, tmp_rho, INSERT_VALUES);
-    ierr = VecSetValues(energy, info.nnodes, idu, tmp_efluid, INSERT_VALUES);
+    ierr = VecSetValues(FluidEnergy, info.nnodes, idu, tmp_efluid, INSERT_VALUES);
+    ierr = VecSetValues(RadEnergy, info.nnodes, idu, tmp_erad, INSERT_VALUES);
 
     return ierr;
 }
