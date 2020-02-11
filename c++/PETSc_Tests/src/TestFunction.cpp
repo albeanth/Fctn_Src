@@ -144,6 +144,30 @@ double TestFunction::efluidp(const double x){
   return val;
 }
 
+double TestFunction::erad(const double x) {
+  /*
+  function definition for fluid pressure
+  */
+  return cos(x*M_PI) + 1.0;
+  // return 2.0 - pow(x, 4.0);
+}
+
+double TestFunction::eradp(const double x) {
+  /*
+  function definition for fluid pressure
+  */
+  return -M_PI*sin(M_PI*x);
+  // return -4.0 * pow(x, 3.0);
+}
+
+double TestFunction::eradpp(const double x) {
+  /*
+  function definition for fluid pressure
+  */
+  return -pow(M_PI,2.0)*cos(M_PI*x);
+  // return -12.0 * pow(x, 2.0);
+}
+
 double TestFunction::SigA(const double x){
     /*
     absorption cross section
@@ -179,6 +203,32 @@ double TestFunction::Dx(const double x){
     return val;
 }
 
+double TestFunction::sig_r(const double x) {
+  /*
+   *  thermal radiation total Roseland mean cross section
+   */
+  double val{NAN};
+  if (hetero == false) {
+    val = 1.0;
+  } else if (hetero == true) {
+    val = x + 1.0;
+  }
+  return val;
+}
+
+double TestFunction::sig_rp(const double x) {
+  /*
+   *  first derivatice of thermal radiation total Roseland mean cross section
+   */
+  double val{NAN};
+  if (hetero == false) {
+    val = 0.0;
+  } else if (hetero == true) {
+    val = 1.0;
+  }
+  return val;
+}
+
 double TestFunction::MMS_Src(const double x) {
   /*
    * source that defines the MMS problem for 
@@ -203,10 +253,18 @@ double TestFunction::MMS_Src_Momentum(const double x){
     return rho(x)*2.0*u(x)*up(x) + rhop(x)*pow(u(x),2.0) + gamma_s*efluidp(x);
 }
 
-double TestFunction::MMS_Src_Energy(const double x) {
+double TestFunction::MMS_Src_EFluid(const double x) {
   /*
    * source to define the MMS problem for
    * the conservation of momentum
    */
   return 1.0/2.0*(rhop(x)*pow(u(x),3.0) + rho(x)*3.0*pow(u(x),2.0)*up(x)) + (1.0+gamma_s)*(up(x)*efluid(x) + u(x)*efluidp(x));
+}
+
+double TestFunction::MMS_Src_ERad(const double x){
+  /*
+   *  source to define the MMS problem for
+   *  the radiation diffusion equation
+   */
+  return -c/3.0*( -sig_rp(x)/pow(sig_r(x),2.0)*eradp(x) + 1.0/sig_r(x)*eradpp(x) ) - c*sig_r(x)*(efluid(x) - erad(x));
 }

@@ -28,22 +28,31 @@ class TestFunction{
         selection{problem}, hetero{material}{ // initialize member variables
             display_selection();              // call display selection function
             gamma_s = 5.0/3.0 - 1.0;
+            c = 1.0;
         }
         public:
             /* Public member variables */
             const int selection;
             const bool hetero;
             char help[120];
+            double c;
             /* Public member functions */
             // neutron diffusion or fluid velocity
             double u(const double x);
             double up(const double x);
             double upp(const double x);
-            // fluid density and pressure
+            // fluid density and energy
             double rho(const double x);
             double rhop(const double x);
             double efluid(const double x);
             double efluidp(const double x);
+            // radiation energy
+            double erad(const double x);
+            double eradp(const double x);
+            double eradpp(const double x);
+            // cross sections for thermal radiation
+            double sig_r(const double x);
+            double sig_rp(const double x);
             // cross sections for neutron diffusion
             double SigA(const double x);
             double D(const double x);
@@ -52,7 +61,8 @@ class TestFunction{
             double MMS_Src(const double x);          // neutron diffusion
             double MMS_Src_Mass(const double x);     // cons. of mass
             double MMS_Src_Momentum(const double x); // cons. of momentum
-            double MMS_Src_Energy(const double x);   // cons. of energy
+            double MMS_Src_EFluid(const double x);   // cons. of energy
+            double MMS_Src_ERad(const double x);   // cons. of energy
         private:
           /* Private member variables */
           double gamma_s;
