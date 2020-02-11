@@ -488,7 +488,9 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     PetscScalar efluid_upwind[2], erad_upwind[2];
     for (PetscInt i=0; i<nn; i+=user->info.order[0]){
         if (i == 0){
+            /* fluid mass and momentum upwind values for left cell edge */
             mass_upwind = user->rho(l) * user->u(l);
+            momen_upwind = user->rho(l) * pow(user->u(l),2.0) + user->ctx.gamma_s * user->efluid(l) + user->erad(l)/3.0;
             /* fluid energy upwind values for left and right edge */
             efluid_upwind[0] = -0.5 * user->rho(l) * pow(user->u(l),3.0) - (1.0 + user->ctx.gamma_s) * user->u(l) * user->efluid(l) + 0.0; // + 0.0 -> net current at left edge is zero for reflecting BCs
             efluid_upwind[1] =  0.5 * xx[nn+i+1] * pow(xx[i+1],3.0) + (1.0+user->ctx.gamma_s)*xx[i+1]*xx[2*nn+i+1]
@@ -500,6 +502,9 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
                              - ( xx[3*nn+i+2]/4.0 + user->c/(6.0*user->sig_r(user->info.xnod[i+2])) * (xx[3*nn+i+2] - xx[3*nn+i+3])/(user->info.xnod[i+3] - user->info.xnod[i+2])) ;
         }
         if (i == nn-1){
+            /* fluid mass and momentum upwind values for left cell edge */
+            mass_upwind = xx[nn+i-1] * xx[i-1];
+            momen_upwind = xx[nn+i-1] * pow(xx[i-1],2.0) + user->ctx.gamma_s * xx[2*nn+i-1] + xx[3*nn+i-1]/3.0;
             /* fluid energy upwind values for left and right */
             efluid_upwind[0] = -0.5 * xx[nn+i-1] * pow(xx[i-1],3.0) - (1.0 + user->ctx.gamma_s) * xx[i-1] * xx[2*nn+i-1]
                                 - ( xx[3*nn+i-1]/4.0 - user->c/(6.0*user->sig_r(user->info.xnod[i-1])) * (xx[3*nn+i-2] - xx[3*nn+i-1])/(user->info.xnod[i-1] - user->info.xnod[i-2]) )
@@ -511,7 +516,9 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
             erad_upwind[1] = 0.0; // net current at left edge is zero for reflecting BCs
         }
         else{
+            /* fluid mass and momentum upwind values for left cell edge */
             mass_upwind = xx[nn+i-1] * xx[i-1];
+            momen_upwind = xx[nn+i-1] * pow(xx[i-1],2.0) + user->ctx.gamma_s * xx[2*nn+i-1] + xx[3*nn+i-1]/3.0;
             /* fluid energy upwind values for left and right edge */
             efluid_upwind[0] = -0.5 * xx[nn+i-1] * pow(xx[i-1],3.0) - (1.0 + user->ctx.gamma_s) * xx[i-1] * xx[2*nn+i-1]
                                 - ( xx[3*nn+i-1]/4.0 - user->c/(6.0*user->sig_r(user->info.xnod[i-1])) * (xx[3*nn+i-2] - xx[3*nn+i-1])/(user->info.xnod[i-1] - user->info.xnod[i-2]) ) 
@@ -547,6 +554,8 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
                     + xx[nn+i+1]*pow(xx[i+1],2.0) * (1.0/4.0)
                     + xx[2*nn+i]                  * (user->ctx.gamma_s/2.0)
                     + xx[2*nn+i+1]                * (user->ctx.gamma_s/2.0)
+                    + xx[3*nn+i]                  * (1.0/6.0)
+                    + xx[3*nn+i+1]                * (1.0/6.0)
                     - momen_upwind
                     - momen_src[i];
         ff[nn+i+1]= - xx[nn+i]*pow(xx[i],2.0)     * (1.0/4.0)
@@ -557,7 +566,9 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
                     - xx[nn+i+1]*pow(xx[i+1],2.0) * (1.0/4.0)
                     - xx[2*nn+i]                  * (user->ctx.gamma_s/2.0)
                     - xx[2*nn+i+1]                * (user->ctx.gamma_s/2.0)
-                    + xx[nn+i+1]*pow(xx[i+1],2.0) + (user->ctx.gamma_s*xx[2*nn+i+1])
+                    - xx[3*nn+i]                  * (1.0/6.0)
+                    - xx[3*nn+i+1]                * (1.0/6.0)
+                    + xx[nn+i+1]*pow(xx[i+1],2.0) + (user->ctx.gamma_s*xx[2*nn+i+1]) + xx[3*nn+i+1]/3.0
                     - momen_src[i+1];
         // Conservation of fluid energy
         ff[2*nn+i]  =   xx[nn+i]*pow(xx[i],3.0)           * (1.0/10.0)
