@@ -501,7 +501,7 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
             erad_upwind[1] =   ( xx[3*nn+i+1]/4.0 - user->c/(6.0*user->sig_r(user->info.xnod[i+1])) * (xx[3*nn+i] - xx[3*nn+i+1])/(user->info.xnod[i+1] - user->info.xnod[i]))
                              - ( xx[3*nn+i+2]/4.0 + user->c/(6.0*user->sig_r(user->info.xnod[i+2])) * (xx[3*nn+i+2] - xx[3*nn+i+3])/(user->info.xnod[i+3] - user->info.xnod[i+2])) ;
         }
-        if (i == nn-1){
+        else if (i == nn-2){
             /* fluid mass and momentum upwind values for left cell edge */
             mass_upwind = xx[nn+i-1] * xx[i-1];
             momen_upwind = xx[nn+i-1] * pow(xx[i-1],2.0) + user->ctx.gamma_s * xx[2*nn+i-1] + xx[3*nn+i-1]/3.0;
