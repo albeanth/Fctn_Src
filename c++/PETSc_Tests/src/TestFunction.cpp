@@ -250,7 +250,7 @@ double TestFunction::MMS_Src_Momentum(const double x){
      * source to define the MMS problem for 
      * the conservation of momentum
      */
-    return rho(x)*2.0*u(x)*up(x) + rhop(x)*pow(u(x),2.0) + gamma_s*efluidp(x);
+    return rho(x)*2.0*u(x)*up(x) + rhop(x)*pow(u(x),2.0) + gamma_s*efluidp(x) + eradp(x)/3.0;
 }
 
 double TestFunction::MMS_Src_EFluid(const double x) {
@@ -258,7 +258,11 @@ double TestFunction::MMS_Src_EFluid(const double x) {
    * source to define the MMS problem for
    * the conservation of momentum
    */
-  return 1.0/2.0*(rhop(x)*pow(u(x),3.0) + rho(x)*3.0*pow(u(x),2.0)*up(x)) + (1.0+gamma_s)*(up(x)*efluid(x) + u(x)*efluidp(x));
+  double val{NAN};
+  val = 1.0/2.0*(rhop(x)*pow(u(x),3.0) + rho(x)*3.0*pow(u(x),2.0)*up(x)) 
+        + (1.0+gamma_s)*(up(x)*efluid(x) + u(x)*efluidp(x)) 
+        - c/3.0*( -sig_rp(x)/pow(sig_r(x),2.0)*eradp(x) + 1.0/sig_r(x)*eradpp(x) );
+  return val;
 }
 
 double TestFunction::MMS_Src_ERad(const double x){
