@@ -22,7 +22,17 @@ PetscErrorCode NonLinear::Initialize_NL_1D(){
     ierr = MatSetUp(J); CHKERRQ(ierr);
     // set function and jacobian functions
     ierr = SNESSetFunction(snes, residual, FormFunction, this); CHKERRQ(ierr); // set function evaluation routing and vector 
-    ierr = SNESSetJacobian(snes, J, J, NULL, NULL); CHKERRQ(ierr); // set Jacobian matrix data strcuture and evaluation routine 
+    ierr = SNESSetJacobian(snes, J, J, NULL, NULL); CHKERRQ(ierr); // set Jacobian matrix data strcuture and evaluation routine
+
+    // /*
+    //  * nonlinear preconditioning
+    //  * - options are passed to this via the "-npc_" prefix
+    //  */
+    // SNES psnes;                         // "inner" snes instance
+    // SNESGetNPC(snes, &psnes);           // extract inner snes
+    // // SNESSetType(psnes, SNESSHELL);
+    // // SNESShellSetSolve(psnes, );
+
     /*
     *  Customize nonlinear solver; set runtime options
     *    Set linear solver defaults for this problem. By extracting the
@@ -486,22 +496,25 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     const double l{user->info.bounds[0]};
     const double r{user->info.bounds[1]};
     PetscScalar efluid_upwind[2], erad_upwind[2];
+    // PetscPrintf(PETSC_COMM_SELF, "In FormFunction\n");
     for (PetscInt i=0; i<nn; i+=user->info.order[0]){
         if (i == 0){
+            // PetscPrintf(PETSC_COMM_SELF, "  \nel = %d, (%d, %d), ( i==%d )\n", i/2, i, i+1, i);
             /* fluid mass and momentum upwind values for left cell edge */
             mass_upwind = user->rho(l) * user->u(l);
             momen_upwind = user->rho(l) * pow(user->u(l),2.0) + user->ctx.gamma_s * user->efluid(l) + user->erad(l)/3.0;
             /* fluid energy upwind values for left and right edge */
             efluid_upwind[0] = -0.5 * user->rho(l) * pow(user->u(l),3.0) - (1.0 + user->ctx.gamma_s) * user->u(l) * user->efluid(l) + 0.0; // + 0.0 -> net current at left edge is zero for reflecting BCs
             efluid_upwind[1] =  0.5 * xx[nn+i+1] * pow(xx[i+1],3.0) + (1.0+user->ctx.gamma_s)*xx[i+1]*xx[2*nn+i+1]
-                                + (xx[3*nn+i+1]/4.0 - user->c/(6.0*user->sig_r(user->info.xnod[i+1])) * (xx[3*nn+i]-xx[3*nn+i+1])/(user->info.xnod[i+1] - user->info.xnod[i]) )
-                                - (xx[3*nn+i+2]/4.0 + user->c/(6.0*user->sig_r(user->info.xnod[i+2])) * (xx[3*nn+i+2]-xx[3*nn+i+3])/(user->info.xnod[i+3]-user->info.xnod[i+2]) );
+                                + ( xx[3*nn+i+1]/4.0 - user->c/(6.0*user->sig_r(user->info.xnod[i+1])) * (xx[3*nn+i] - xx[3*nn+i+1])/(user->info.xnod[i+1] - user->info.xnod[i]))
+                                - ( xx[3*nn+i+2]/4.0 + user->c/(6.0*user->sig_r(user->info.xnod[i+2])) * (xx[3*nn+i+2] - xx[3*nn+i+3])/(user->info.xnod[i+3] - user->info.xnod[i+2])) ;
             /* radiation energy upwind values for left and right edge */
             erad_upwind[0] = 0.0; // net current at left edge is zero for reflecting BCs
             erad_upwind[1] =   ( xx[3*nn+i+1]/4.0 - user->c/(6.0*user->sig_r(user->info.xnod[i+1])) * (xx[3*nn+i] - xx[3*nn+i+1])/(user->info.xnod[i+1] - user->info.xnod[i]))
                              - ( xx[3*nn+i+2]/4.0 + user->c/(6.0*user->sig_r(user->info.xnod[i+2])) * (xx[3*nn+i+2] - xx[3*nn+i+3])/(user->info.xnod[i+3] - user->info.xnod[i+2])) ;
         }
         else if (i == nn-2){
+            // PetscPrintf(PETSC_COMM_SELF, "  \nel = %d, (%d, %d), (i == %d)\n", i/2, i, i+1, i);
             /* fluid mass and momentum upwind values for left cell edge */
             mass_upwind = xx[nn+i-1] * xx[i-1];
             momen_upwind = xx[nn+i-1] * pow(xx[i-1],2.0) + user->ctx.gamma_s * xx[2*nn+i-1] + xx[3*nn+i-1]/3.0;
@@ -516,6 +529,7 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
             erad_upwind[1] = 0.0; // net current at left edge is zero for reflecting BCs
         }
         else{
+            // PetscPrintf(PETSC_COMM_SELF, "  \nel = %d, (%d, %d)\n", i/2, i, i+1);
             /* fluid mass and momentum upwind values for left cell edge */
             mass_upwind = xx[nn+i-1] * xx[i-1];
             momen_upwind = xx[nn+i-1] * pow(xx[i-1],2.0) + user->ctx.gamma_s * xx[2*nn+i-1] + xx[3*nn+i-1]/3.0;
@@ -532,6 +546,21 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
             erad_upwind[1] =   ( xx[3*nn+i+1]/4.0 - user->c/(6.0*user->sig_r(user->info.xnod[i+1])) * (xx[3*nn+i] - xx[3*nn+i+1])/(user->info.xnod[i+1] - user->info.xnod[i]))
                              - ( xx[3*nn+i+2]/4.0 + user->c/(6.0*user->sig_r(user->info.xnod[i+2])) * (xx[3*nn+i+2] - xx[3*nn+i+3])/(user->info.xnod[i+3] - user->info.xnod[i+2])) ;
         }
+        // PetscPrintf(PETSC_COMM_SELF, "  mass_upwind = % .8e\n", mass_upwind);
+        // PetscPrintf(PETSC_COMM_SELF, "  momen_upwind = % .8e\n", mass_upwind);
+        // PetscPrintf(PETSC_COMM_SELF, "  efluid_upwind = (% .8e, % .8e)\n", efluid_upwind[0], efluid_upwind[1]);
+        // PetscPrintf(PETSC_COMM_SELF, "  erad_upwind = (% .8e, % .8e)\n", erad_upwind[0], erad_upwind[1]);
+        // PetscPrintf(PETSC_COMM_SELF, "  mass_src = (% .8e, % .8e)\n", mass_src[0], mass_src[1]);
+        // PetscPrintf(PETSC_COMM_SELF, "  momen_src = (% .8e, % .8e)\n", momen_src[0], momen_src[1]);
+        // PetscPrintf(PETSC_COMM_SELF, "  efluid_src = (% .8e, % .8e)\n", efluid_src[0], efluid_src[1]);
+        // PetscPrintf(PETSC_COMM_SELF, "  erad_src = (% .8e, % .8e)\n", erad_src[0], erad_src[1]);
+        // PetscPrintf(PETSC_COMM_SELF, "  efluid_i = (% .8e, % .8e)\n", efluid_i[0], efluid_i[1]);
+        // PetscPrintf(PETSC_COMM_SELF, "  efluid_ii = (% .8e, % .8e)\n", efluid_ii[0], efluid_ii[1]);
+        // PetscPrintf(PETSC_COMM_SELF, "  erad_i = (% .8e, % .8e)\n", erad_i[0], erad_i[1]);
+        // PetscPrintf(PETSC_COMM_SELF, "  erad_ii = (% .8e, % .8e)\n", erad_ii[0], erad_ii[1]);
+        // PetscPrintf(PETSC_COMM_SELF, "  erad_iii = (% .8e, % .8e)\n", erad_iii[0], erad_iii[1]);
+        // PetscPrintf(PETSC_COMM_SELF, "  erad_iv = (% .8e, % .8e)\n", erad_iv[0], erad_iv[1]);
+        // exit(-1);
         // Conservation of mass
         ff[i]   =   xx[nn+i]*xx[i]     * (1.0/3.0)
                   + xx[nn+i+1]*xx[i]   * (1.0/6.0)
