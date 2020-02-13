@@ -196,7 +196,7 @@ PetscErrorCode NonLinear::EvalBasis(const double x, const int ord){
         PetscScalar i[]   = {b1p*b1p, b1p*b2p};
         PetscScalar ii[]  = {b2p*b1p, b2p*b2p};
         PetscScalar iii[] = {b1*b1, b1*b2};
-        PetscScalar iv[]  = {b1*b2, b2*b2};
+        PetscScalar iv[]  = {b2*b1, b2*b2};
         ierr = VecSetValues(mass_basis_src, 2, idx, src, INSERT_VALUES); CHKERRQ(ierr);
         ierr = VecSetValues(momen_basis_src, 2, idx, src, INSERT_VALUES); CHKERRQ(ierr);
         ierr = VecSetValues(efluid_basis_src, 2, idx, src, INSERT_VALUES); CHKERRQ(ierr);
@@ -583,8 +583,7 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
                       + xx[2*nn+i+1]*xx[i]                * (1.0/6.0) * (1.0+user->ctx.gamma_s)
                       + xx[2*nn+i]*xx[i+1]                * (1.0/6.0) * (1.0+user->ctx.gamma_s)
                       + xx[2*nn+i+1]*xx[i+1]              * (1.0/3.0) * (1.0+user->ctx.gamma_s)
-                      + xx[3*nn+i]*efluid_i[i]
-                      + xx[3*nn+i+1]*efluid_ii[i]
+                      + xx[3*nn+i]*efluid_i[i] + xx[3*nn+i+1]*efluid_i[i+1]
                       + efluid_upwind[0]
                       - efluid_src[i];
         ff[2*nn+i+1]= - xx[nn+i]*pow(xx[i],3.0)           * (1.0/10.0)
@@ -599,25 +598,16 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
                       - xx[2*nn+i+1]*xx[i]                * (1.0/6.0) * (1.0+user->ctx.gamma_s)
                       - xx[2*nn+i]*xx[i+1]                * (1.0/6.0) * (1.0+user->ctx.gamma_s)
                       - xx[2*nn+i+1]*xx[i+1]              * (1.0/3.0) * (1.0+user->ctx.gamma_s)
-                      + xx[3*nn+i]*efluid_i[i+1]
-                      + xx[3*nn+i+1]*efluid_ii[i+1]
+                      + xx[3*nn+i]*efluid_ii[i] + xx[3*nn+i+1]*efluid_ii[i+1]
                       + efluid_upwind[1]
                       - efluid_src[i+1];
         // radiation energy
-        ff[3*nn+i]   =   xx[3*nn+i] * erad_i[i]
-                       + xx[3*nn+i+1] * erad_ii[i]
-                       - xx[2*nn+i] * erad_iii[i]
-                       - xx[2*nn+i+1] * erad_iv[i]
-                       + xx[3*nn+i] * erad_iii[i]
-                       + xx[3*nn+i+1] * erad_iv[i]
+        ff[3*nn+i]   =   xx[3*nn+i] * erad_i[i] + xx[3*nn+i+1] * erad_i[i+1]
+                       + (xx[3*nn+i] - xx[2*nn+i]) * erad_iii[0] + (xx[3*nn+i+1] - xx[2*nn+i+1]) * erad_iii[1]
                        + erad_upwind[0]
                        - erad_src[i];
-        ff[3*nn+i+1] =   xx[3*nn+i] * erad_i[i+1]
-                       + xx[3*nn+i+1] * erad_ii[i+1]
-                       - xx[2*nn+i] * erad_iii[i+1]
-                       - xx[2*nn+i+1] * erad_iv[i+1]
-                       + xx[3*nn+i] * erad_iii[i+1]
-                       + xx[3*nn+i+1] * erad_iv[i+1]
+        ff[3*nn+i+1] =   xx[3*nn+i] * erad_ii[i] + xx[3*nn+i+1] * erad_ii[i+1]
+                       + (xx[3*nn+i] - xx[2*nn+i]) * erad_iv[0] + (xx[3*nn+i+1] - xx[2*nn+i+1]) * erad_iv[1]
                        + erad_upwind[1]
                        - erad_src[i+1];
     }
