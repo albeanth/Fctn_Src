@@ -39,7 +39,7 @@ PetscErrorCode NonLinear::Initialize_NL_1D(){
     ierr = KSPSetType(ksp, KSPGMRES); CHKERRQ(ierr);
     ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
     ierr = PCSetType(pc, PCILU); CHKERRQ(ierr);
-    ierr = KSPSetTolerances(ksp, 1e-12, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
+    ierr = KSPSetTolerances(ksp, 1e-08, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
     // set runtime options THESE WILL OVERRIDE THE ABOVE THREE COMMANDS
     ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
     ierr = SNESSetFromOptions(snes); CHKERRQ(ierr);
@@ -298,10 +298,13 @@ PetscErrorCode NonLinear::NLSolve(){
      */
     /* Set initial guess */
     for (PetscInt i=0; i<info.nnodes; i++){
-        ierr = VecSetValue(soln, i, 0.0, INSERT_VALUES); CHKERRQ(ierr);
-        ierr = VecSetValue(soln, i+info.nnodes, 1.0, INSERT_VALUES); CHKERRQ(ierr);
-        ierr = VecSetValue(soln, i+2*info.nnodes, 10.0, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i, 1.0, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i+info.nnodes, 10.0, INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i+2*info.nnodes, 100.0, INSERT_VALUES); CHKERRQ(ierr);
     }
+    ierr = VecAssemblyBegin(soln); CHKERRQ(ierr);
+    ierr = VecAssemblyEnd(soln); CHKERRQ(ierr);
+    CHKERRQ(ierr);
     /* Solve nonlinear system */
     ierr = SNESSolve(snes, NULL, soln); CHKERRQ(ierr);
     // ierr = SNESView(snes, PETSC_VIEWER_STDOUT_WORLD);
@@ -381,12 +384,12 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
      *    cell 1 -> i = 0
      *    cell 2 -> i = 2
      */
-    const double l{user->info.bounds[0]};
+    // const double l{user->info.bounds[0]};
     for (PetscInt i=0; i<nn; i+=user->info.order[0]){
         if (i == 0){
-            mass_upwind = user->rho(l) * user->u(l);
-            momen_upwind = user->rho(l) * pow(user->u(l),2.0) + user->ctx.gamma_s * user->efluid(l);
-            efluid_upwind = 0.5 * user->rho(l) * pow(user->u(l),3.0) + (1.0 + user->ctx.gamma_s)* user->u(l) * user->efluid(l);
+            mass_upwind = 10.0 * 1.0;//user->rho(l) * user->u(l);
+            momen_upwind = 10.0 * pow(1.0,2.0) + user->ctx.gamma_s * 100.0;//user->rho(l) * pow(user->u(l),2.0) + user->ctx.gamma_s * user->efluid(l);
+            efluid_upwind = 0.5 * 10.0 * pow(1.0,3.0) + (1.0 + user->ctx.gamma_s) * 1.0 * 100.0;//0.5 * user->rho(l) * pow(user->u(l),3.0) + (1.0 + user->ctx.gamma_s)* user->u(l) * user->efluid(l);
         }
         else{
             mass_upwind = xx[nn+i-1] * xx[i-1];
