@@ -6,6 +6,8 @@
 #include "PetscFEFuncs.hpp" // <- parent class
 #include "SetUpGrid.hpp"    // <- parent class
 #include "TestFunction.hpp" // <- parent class
+#include <petscdm.h>
+#include <petscdmda.h>
 #include <petscsnes.h>
 #include <vector>
 

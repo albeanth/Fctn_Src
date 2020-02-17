@@ -44,6 +44,14 @@ PetscErrorCode NonLinear::Initialize_NL_1D(){
     ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
     ierr = SNESSetFromOptions(snes); CHKERRQ(ierr);
 
+    /* ------ Initialize DMDA Gid ------ */
+    DM da;
+    ierr = DMDACreate1d(PETSC_COMM_WORLD,DM_BOUNDARY_NONE,128,1,1,0,&da);CHKERRQ(ierr);
+    ierr = DMSetFromOptions(da);CHKERRQ(ierr);
+    ierr = DMSetUp(da);CHKERRQ(ierr);
+    ierr = SNESSetDM(snes,da); CHKERRQ(ierr);
+    ierr = KSPSetDM(ksp,da); CHKERRQ(ierr);
+
     // ------ local FE vec initialization ------
     ierr = VecCreate(PETSC_COMM_WORLD, &mass_basis_src); CHKERRQ(ierr);
     ierr = VecSetSizes(mass_basis_src, PETSC_DECIDE, info.order[0]); CHKERRQ(ierr);
@@ -140,6 +148,9 @@ PetscErrorCode NonLinear::NL_1D(){
     /* Check numerical solution */
     // ierr = VelRho_L2Error(); CHKERRQ(ierr);
 
+    ierr = SNESDestroy(&snes);CHKERRQ(ierr);
+    ierr = KSPDestroy(&ksp);CHKERRQ(ierr);
+    ierr = DMDestroy(&da);CHKERRQ(ierr);
     // all petsc based functions need to end with PetscFinalize()
     ierr = PetscFinalize();
     return ierr;
