@@ -51,8 +51,8 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         PetscErrorCode NL_1D();
     private:
         // Private Member Variables
-        double xL, xR, dx, x; /* cell specific information */
-        PetscScalar src_mass, src_momen, src_energy;
+        // double xL, xR, dx, x; /* cell specific information */
+        // PetscScalar src_mass, src_momen, src_energy;
         PetscMPIInt size;
         PetscInt N;
         PetscErrorCode ierr;    /* petsc error code */
