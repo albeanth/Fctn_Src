@@ -387,39 +387,59 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
     // const double l{user->info.bounds[0]};
     for (PetscInt i=0; i<nn; i+=user->info.order[0]){
         if (i == 0){
-            mass_upwind = 10.0 * 1.0;//user->rho(l) * user->u(l);
-            momen_upwind = 10.0 * pow(1.0,2.0) + user->ctx.gamma_s * 100.0;//user->rho(l) * pow(user->u(l),2.0) + user->ctx.gamma_s * user->efluid(l);
-            efluid_upwind = 0.5 * 10.0 * pow(1.0,3.0) + (1.0 + user->ctx.gamma_s) * 1.0 * 100.0;//0.5 * user->rho(l) * pow(user->u(l),3.0) + (1.0 + user->ctx.gamma_s)* user->u(l) * user->efluid(l);
+            // upwind information for left node, cell = 0
+            mass_upwind = xx[nn] * xx[0];//user->rho(l) * user->u(l);
+            momen_upwind = xx[nn] * pow(xx[0],2.0) + user->ctx.gamma_s * xx[2*nn];//user->rho(l) * pow(user->u(l),2.0) + user->ctx.gamma_s * user->efluid(l);
+            efluid_upwind = 0.5 * xx[nn] * pow(xx[0],3.0) + (1.0 + user->ctx.gamma_s) * xx[0] * xx[2*nn];//0.5 * user->rho(l) * pow(user->u(l),3.0) + (1.0 + user->ctx.gamma_s)* user->u(l) * user->efluid(l);
+            // equations for left node, cell = 0
+            ff[i] = xx[0];
+            ff[nn+i] = xx[nn];
+            ff[2*nn+i] = xx[2*nn];
         }
         else{
+            // upwind information for left node, cells > 0
             mass_upwind = xx[nn+i-1] * xx[i-1];
             momen_upwind = xx[nn+i-1] * pow(xx[i-1],2.0) + user->ctx.gamma_s * xx[2*nn+i-1];
             efluid_upwind = 0.5 * xx[nn+i-1] * pow(xx[i-1],3.0) + (1.0 + user->ctx.gamma_s) * xx[i-1] * xx[2*nn+i-1];
+            // equations for left node, cells > 0
+            ff[i] =   xx[nn+i]*xx[i] * (1.0/3.0)
+                    + xx[nn+i+1]*xx[i] * (1.0/6.0)
+                    + xx[nn+i]*xx[i+1] * (1.0/6.0)
+                    + xx[nn+i+1]*xx[i+1] * (1.0/3.0)
+                    - mass_upwind;
+            //   - mass_src[i];
+            ff[nn+i]  =   xx[nn+i]*pow(xx[i],2.0)     * (1.0/4.0)
+                        + xx[nn+i+1]*pow(xx[i],2.0)   * (1.0/12.0)
+                        + xx[nn+i]*xx[i]*xx[i+1]      * (1.0/6.0)
+                        + xx[nn+i+1]*xx[i]*xx[i+1]    * (1.0/6.0)
+                        + xx[nn+i]*pow(xx[i+1],2.0)   * (1.0/12.0)
+                        + xx[nn+i+1]*pow(xx[i+1],2.0) * (1.0/4.0)
+                        + xx[2*nn+i]                  * (user->ctx.gamma_s/2.0)
+                        + xx[2*nn+i+1]                * (user->ctx.gamma_s/2.0)
+                        - momen_upwind;
+                        //- momen_src[i];
+            ff[2*nn+i]  =   xx[nn+i]*pow(xx[i],3.0)           * (1.0/10.0)
+                        + xx[nn+i+1]*pow(xx[i],3.0)         * (1.0/40.0)
+                        + xx[nn+i]*pow(xx[i],2.0)*xx[i+1]   * (3.0/40.0)
+                        + xx[nn+i+1]*pow(xx[i],2.0)*xx[i+1] * (1.0/20.0)
+                        + xx[nn+i]*xx[i]*pow(xx[i+1],2.0)   * (1.0/20.0)
+                        + xx[nn+i+1]*xx[i]*pow(xx[i+1],2.0) * (3.0/40.0)
+                        + xx[nn+i]*pow(xx[i+1],3.0)         * (1.0/40.0)
+                        + xx[nn+i+1]*pow(xx[i+1],3.0)       * (1.0/10.0)
+                        + xx[2*nn+i]*xx[i]                  * (1.0/3.0) * (1.0+user->ctx.gamma_s)
+                        + xx[2*nn+i+1]*xx[i]                * (1.0/6.0) * (1.0+user->ctx.gamma_s)
+                        + xx[2*nn+i]*xx[i+1]                * (1.0/6.0) * (1.0+user->ctx.gamma_s)
+                        + xx[2*nn+i+1]*xx[i+1]              * (1.0/3.0) * (1.0+user->ctx.gamma_s)
+                        - efluid_upwind;
+                        //- efluid_src[i];
         }
         // Conservation of mass
-        ff[i]   =   xx[nn+i]*xx[i]     * (1.0/3.0)
-                  + xx[nn+i+1]*xx[i]   * (1.0/6.0)
-                  + xx[nn+i]*xx[i+1]   * (1.0/6.0)
-                  + xx[nn+i+1]*xx[i+1] * (1.0/3.0)
-                  - mass_upwind;
-                //   - mass_src[i];
         ff[i+1] = - xx[nn+i]*xx[i]     * (1.0/3.0)
                   - xx[nn+i+1]*xx[i]   * (1.0/6.0)
                   - xx[nn+i]*xx[i+1]   * (1.0/6.0)
                   - xx[nn+i+1]*xx[i+1] * (1.0/3.0)
                   + xx[nn+i+1]*xx[i+1];
                 //   - mass_src[i+1];
-        // Conservation of momentum
-        ff[nn+i]  =   xx[nn+i]*pow(xx[i],2.0)     * (1.0/4.0)
-                    + xx[nn+i+1]*pow(xx[i],2.0)   * (1.0/12.0)
-                    + xx[nn+i]*xx[i]*xx[i+1]      * (1.0/6.0)
-                    + xx[nn+i+1]*xx[i]*xx[i+1]    * (1.0/6.0)
-                    + xx[nn+i]*pow(xx[i+1],2.0)   * (1.0/12.0)
-                    + xx[nn+i+1]*pow(xx[i+1],2.0) * (1.0/4.0)
-                    + xx[2*nn+i]                  * (user->ctx.gamma_s/2.0)
-                    + xx[2*nn+i+1]                * (user->ctx.gamma_s/2.0)
-                    - momen_upwind;
-                    //- momen_src[i];
         ff[nn+i+1]= - xx[nn+i]*pow(xx[i],2.0)     * (1.0/4.0)
                     - xx[nn+i+1]*pow(xx[i],2.0)   * (1.0/12.0)
                     - xx[nn+i]*xx[i]*xx[i+1]      * (1.0/6.0)
@@ -430,21 +450,6 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
                     - xx[2*nn+i+1]                * (user->ctx.gamma_s/2.0)
                     + xx[nn+i+1]*pow(xx[i+1],2.0) + (user->ctx.gamma_s*xx[2*nn+i+1]);
                     //- momen_src[i+1];
-        // Conservation of fluid energy
-        ff[2*nn+i]  =   xx[nn+i]*pow(xx[i],3.0)           * (1.0/10.0)
-                      + xx[nn+i+1]*pow(xx[i],3.0)         * (1.0/40.0)
-                      + xx[nn+i]*pow(xx[i],2.0)*xx[i+1]   * (3.0/40.0)
-                      + xx[nn+i+1]*pow(xx[i],2.0)*xx[i+1] * (1.0/20.0)
-                      + xx[nn+i]*xx[i]*pow(xx[i+1],2.0)   * (1.0/20.0)
-                      + xx[nn+i+1]*xx[i]*pow(xx[i+1],2.0) * (3.0/40.0)
-                      + xx[nn+i]*pow(xx[i+1],3.0)         * (1.0/40.0)
-                      + xx[nn+i+1]*pow(xx[i+1],3.0)       * (1.0/10.0)
-                      + xx[2*nn+i]*xx[i]                  * (1.0/3.0) * (1.0+user->ctx.gamma_s)
-                      + xx[2*nn+i+1]*xx[i]                * (1.0/6.0) * (1.0+user->ctx.gamma_s)
-                      + xx[2*nn+i]*xx[i+1]                * (1.0/6.0) * (1.0+user->ctx.gamma_s)
-                      + xx[2*nn+i+1]*xx[i+1]              * (1.0/3.0) * (1.0+user->ctx.gamma_s)
-                      - efluid_upwind;
-                      //- efluid_src[i];
         ff[2*nn+i+1]= - xx[nn+i]*pow(xx[i],3.0)           * (1.0/10.0)
                       - xx[nn+i+1]*pow(xx[i],3.0)         * (1.0/40.0)
                       - xx[nn+i]*pow(xx[i],2.0)*xx[i+1]   * (3.0/40.0)
