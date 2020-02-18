@@ -45,12 +45,30 @@ PetscErrorCode NonLinear::Initialize_NL_1D(){
     ierr = SNESSetFromOptions(snes); CHKERRQ(ierr);
 
     /* ------ Initialize DMDA Gid ------ */
-    DM da;
-    ierr = DMDACreate1d(PETSC_COMM_WORLD,DM_BOUNDARY_NONE,128,1,1,0,&da);CHKERRQ(ierr);
-    ierr = DMSetFromOptions(da);CHKERRQ(ierr);
-    ierr = DMSetUp(da);CHKERRQ(ierr);
-    ierr = SNESSetDM(snes,da); CHKERRQ(ierr);
-    ierr = KSPSetDM(ksp,da); CHKERRQ(ierr);
+    // DM da;
+    // ierr = DMDACreate1d(PETSC_COMM_WORLD,DM_BOUNDARY_NONE,32,3,1,0,&da);CHKERRQ(ierr);
+    // ierr = DMSetFromOptions(da);CHKERRQ(ierr);
+    // ierr = DMSetUp(da);CHKERRQ(ierr);
+    // ierr = SNESSetDM(snes,da); CHKERRQ(ierr);
+    // ierr = KSPSetDM(ksp,da); CHKERRQ(ierr);
+
+    // ierr = KSPGetDM(ksp, &da); CHKERRQ(ierr);
+    // PetscInt mx, xm, xs;
+    // PetscScalar h;
+    // MatStencil row, col;
+    // ierr = DMDAGetInfo(da, 0, &mx,0,0, 0,0,0, 0, 0, 0,0,0,0); CHKERRQ(ierr);
+    // ierr = DMDAGetCorners(da, &xs,0,0,&xm,0,0); CHKERRQ(ierr);
+    // h = 1.0/(mx-1);
+    // for (PetscInt i=0; i<xs+xm; i++){
+    //     row.i = i;
+    //     PetscPrintf(PETSC_COMM_SELF, "i = %d\n", i);
+    //     // if (i == 0){
+
+    //     // }
+    // }
+    // PetscPrintf(PETSC_COMM_SELF, "h = %.3f\n", h);
+    // exit(-1);
+
 
     // ------ local FE vec initialization ------
     ierr = VecCreate(PETSC_COMM_WORLD, &mass_basis_src); CHKERRQ(ierr);
@@ -149,8 +167,8 @@ PetscErrorCode NonLinear::NL_1D(){
     // ierr = VelRho_L2Error(); CHKERRQ(ierr);
 
     ierr = SNESDestroy(&snes);CHKERRQ(ierr);
-    ierr = KSPDestroy(&ksp);CHKERRQ(ierr);
-    ierr = DMDestroy(&da);CHKERRQ(ierr);
+    // ierr = KSPDestroy(&ksp);CHKERRQ(ierr);
+    // ierr = DMDestroy(&da);CHKERRQ(ierr);
     // all petsc based functions need to end with PetscFinalize()
     ierr = PetscFinalize();
     return ierr;
@@ -306,9 +324,9 @@ PetscErrorCode NonLinear::NLSolve(){
      */
     /* Set initial guess */
     for (PetscInt i=0; i<info.nnodes; i++){
-        ierr = VecSetValue(soln, i, u(info.xnod[i]), INSERT_VALUES); CHKERRQ(ierr);
-        ierr = VecSetValue(soln, i+info.nnodes, rho(info.xnod[i]), INSERT_VALUES); CHKERRQ(ierr);
-        ierr = VecSetValue(soln, i+2*info.nnodes, efluid(info.xnod[i]), INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i, u(info.bounds[0]), INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i+info.nnodes, rho(info.bounds[0]), INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i+2*info.nnodes, efluid(info.bounds[0]), INSERT_VALUES); CHKERRQ(ierr);
     }
     /* Solve nonlinear system */
     ierr = SNESSolve(snes, NULL, soln); CHKERRQ(ierr);
