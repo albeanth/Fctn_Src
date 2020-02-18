@@ -68,6 +68,12 @@ PetscErrorCode NonLinear::Initialize_NL_1D(){
     ierr = VecDuplicate(ctx.glo_mass_src, &velocity); CHKERRQ(ierr);
     ierr = VecDuplicate(ctx.glo_mass_src, &density); CHKERRQ(ierr);
     ierr = VecDuplicate(ctx.glo_mass_src, &energy); CHKERRQ(ierr);
+
+    PetscViewerDrawOpen(PETSC_COMM_WORLD, 0,0,0,0,400,400, &monCTX.viewer1);
+    PetscViewerDrawOpen(PETSC_COMM_WORLD, 0,0,PETSC_DECIDE,PETSC_DECIDE,400,400, &monCTX.viewer2);
+    PetscViewerDrawOpen(PETSC_COMM_WORLD, 0,0,PETSC_DECIDE,PETSC_DECIDE,400,400, &monCTX.viewer3);
+    SNESMonitorSet(snes, Monitor, this,0);
+
     return ierr;
 }
 
@@ -289,15 +295,54 @@ PetscErrorCode NonLinear::Local2Global(const int el){
     return ierr;
 }
 
+PetscErrorCode Monitor(SNES snes, PetscInt its, PetscReal fnorm, void *ctx){
+    NonLinear *user = (NonLinear *)ctx;
+    Vec soln;
+    PetscScalar *tmp_vel, *tmp_rho, *tmp_efluid;
+    tmp_vel = (PetscScalar *)malloc(user->info.nnodes * sizeof(PetscScalar));
+    tmp_rho = (PetscScalar *)malloc(user->info.nnodes * sizeof(PetscScalar));
+    tmp_efluid = (PetscScalar *)malloc(user->info.nnodes * sizeof(PetscScalar));
+
+    PetscInt *idu, *idr, *idem;
+    idu = (PetscInt*) malloc(user->info.nnodes * sizeof(PetscInt));
+    idr = (PetscInt *)malloc(user->info.nnodes * sizeof(PetscInt));
+    idem = (PetscInt *)malloc(user->info.nnodes * sizeof(PetscInt));
+    for (int i=0; i<user->info.nnodes; i++){
+        idu[i] = i;
+        idr[i] = i + user->info.nnodes;
+        idem[i] = i + 2*user->info.nnodes;
+    }
+
+    PetscPrintf(PETSC_COMM_WORLD,"iter = %D, SNES Function norm %g\n",its,(double)fnorm);
+    SNESGetSolution(snes, &soln);
+    VecGetValues(soln, user->info.nnodes, idu, tmp_vel);
+    VecGetValues(soln, user->info.nnodes, idr, tmp_rho);
+    VecGetValues(soln, user->info.nnodes, idem, tmp_efluid);
+    VecSetValues(user->velocity, user->info.nnodes, idu, tmp_vel, INSERT_VALUES);
+    VecSetValues(user->density, user->info.nnodes, idu, tmp_rho, INSERT_VALUES);
+    VecSetValues(user->energy, user->info.nnodes, idu, tmp_efluid, INSERT_VALUES);
+    VecView(user->velocity, user->monCTX.viewer1);
+    VecView(user->density, user->monCTX.viewer2);
+    VecView(user->energy, user->monCTX.viewer3);
+    // for (int index = 0; index < user->info.nnodes; index++){
+    //     PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\n", user->info.xnod[index], tmp_vel[index], tmp_rho[index], tmp_efluid[index]);
+    //     if (index % 2 == 1){
+    //         PetscPrintf(PETSC_COMM_WORLD,"\n");
+    //     }
+    // }
+
+    return 0;
+}
+
 PetscErrorCode NonLinear::NLSolve(){
     /*
      *  create nonlinear solver context and solve equations
      */
     /* Set initial guess */
     for (PetscInt i=0; i<info.nnodes; i++){
-        ierr = VecSetValue(soln, i, u(info.xnod[i]), INSERT_VALUES); CHKERRQ(ierr);
-        ierr = VecSetValue(soln, i+info.nnodes, rho(info.xnod[i]), INSERT_VALUES); CHKERRQ(ierr);
-        ierr = VecSetValue(soln, i+2*info.nnodes, efluid(info.xnod[i]), INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i, u(0.0), INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i+info.nnodes, rho(0.0), INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i+2*info.nnodes, efluid(0.0), INSERT_VALUES); CHKERRQ(ierr);
     }
     /* Solve nonlinear system */
     ierr = SNESSolve(snes, NULL, soln); CHKERRQ(ierr);
