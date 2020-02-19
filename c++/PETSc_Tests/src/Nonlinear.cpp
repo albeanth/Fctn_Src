@@ -16,13 +16,14 @@ PetscErrorCode NonLinear::Initialize_NL_1D(){
     ierr = VecSetFromOptions(soln); CHKERRQ(ierr);
     ierr = VecDuplicate(soln, &residual); CHKERRQ(ierr);
     // create Jacobian matrix data structure
-    ierr = MatCreate(PETSC_COMM_WORLD, &J); CHKERRQ(ierr);
-    ierr = MatSetSizes(J, PETSC_DECIDE, PETSC_DECIDE, N, N); CHKERRQ(ierr);
-    ierr = MatSetFromOptions(J); CHKERRQ(ierr);
-    ierr = MatSetUp(J); CHKERRQ(ierr);
+    // ierr = MatCreate(PETSC_COMM_WORLD, &J); CHKERRQ(ierr);
+    // ierr = MatSetSizes(J, PETSC_DECIDE, PETSC_DECIDE, N, N); CHKERRQ(ierr);
+    // ierr = MatSetFromOptions(J); CHKERRQ(ierr);
+    // ierr = MatSetUp(J); CHKERRQ(ierr);
+    ierr = MatCreateSNESMF(snes, &J); CHKERRQ(ierr);
     // set function and jacobian functions
     ierr = SNESSetFunction(snes, residual, FormFunction, this); CHKERRQ(ierr); // set function evaluation routing and vector 
-    ierr = SNESSetJacobian(snes, J, J, NULL, NULL); CHKERRQ(ierr); // set Jacobian matrix data strcuture and evaluation routine 
+    // ierr = SNESSetJacobian(snes, J, J, NULL, NULL); CHKERRQ(ierr); // set Jacobian matrix data strcuture and evaluation routine 
     /*
     *  Customize nonlinear solver; set runtime options
     *    Set linear solver defaults for this problem. By extracting the
