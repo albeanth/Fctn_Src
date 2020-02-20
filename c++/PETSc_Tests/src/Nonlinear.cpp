@@ -10,6 +10,7 @@ PetscErrorCode NonLinear::Initialize_NL_1D(){
     N = info.nnodes * 3;
     /* ------ Initialize SNES ------ */
     ierr = SNESCreate(PETSC_COMM_WORLD, &snes); CHKERRQ(ierr); // create context 
+    ierr = SNESSetTolerances(snes, 1e-08, 1e-50, 1e-50, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
     // create solution vector
     ierr = VecCreate(PETSC_COMM_WORLD, &soln); CHKERRQ(ierr);
     ierr = VecSetSizes(soln, PETSC_DECIDE, N); CHKERRQ(ierr);
@@ -22,7 +23,7 @@ PetscErrorCode NonLinear::Initialize_NL_1D(){
     ierr = MatSetUp(J); CHKERRQ(ierr);
     // set function and jacobian functions
     ierr = SNESSetFunction(snes, residual, FormFunction, this); CHKERRQ(ierr); // set function evaluation routing and vector 
-    ierr = SNESSetJacobian(snes, J, J, NULL, NULL); CHKERRQ(ierr); // set Jacobian matrix data strcuture and evaluation routine 
+    ierr = SNESSetJacobian(snes, J, J, FormJacobian, this); CHKERRQ(ierr); // set Jacobian matrix data strcuture and evaluation routine 
     /*
     *  Customize nonlinear solver; set runtime options
     *    Set linear solver defaults for this problem. By extracting the
@@ -295,13 +296,13 @@ PetscErrorCode NonLinear::NLSolve(){
      */
     /* Set initial guess */
     for (PetscInt i=0; i<info.nnodes; i++){
-        ierr = VecSetValue(soln, i, u(info.xnod[i]), INSERT_VALUES); CHKERRQ(ierr);
-        ierr = VecSetValue(soln, i+info.nnodes, rho(info.xnod[i]), INSERT_VALUES); CHKERRQ(ierr);
-        ierr = VecSetValue(soln, i+2*info.nnodes, efluid(info.xnod[i]), INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i, u(0.0), INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i+info.nnodes, rho(0.0), INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i+2*info.nnodes, efluid(0.0), INSERT_VALUES); CHKERRQ(ierr);
     }
     /* Solve nonlinear system */
     ierr = SNESSolve(snes, NULL, soln); CHKERRQ(ierr);
-    // ierr = SNESView(snes, PETSC_VIEWER_STDOUT_WORLD);
+    ierr = SNESView(snes, PETSC_VIEWER_STDOUT_WORLD);
     
     /* Map computed solution to solution vectors */
     PetscScalar *tmp_vel, *tmp_rho, *tmp_efluid;
@@ -465,77 +466,121 @@ PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx) {
     /*
      *  compute Jacobia entries and insert into matrix
      */
-    ApplicationCTX *user = (ApplicationCTX *)ctx;
-    const PetscScalar *xx;
-    PetscScalar A[36];
     PetscErrorCode ierr;
-    PetscInt idx[36] = { 0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
-                        10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-                        20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-                        30, 31, 32, 33, 34, 35};
+    NonLinear *user = (NonLinear *)ctx;
+    const PetscScalar *xx;
+    const int nn{user->N};
+    const int n{user->info.nnodes};
+    // const int nels{user->info.nels};
+
+    PetscScalar *A;
+    A = (PetscScalar *)calloc(nn*nn, sizeof(PetscScalar));
+
+    // assign petsc Vec to c array for use
+    PetscInt *idx;
+    idx = (PetscInt*) malloc(nn*nn * sizeof(PetscInt));
+    for (int i=0; i<nn*nn; i++){
+        idx[i] = i;
+    }
 
     /* Get pointer to vector data */
     ierr = VecGetArrayRead(x,&xx);CHKERRQ(ierr);
 
+    PetscInt j, k;
     /* Compute Jacobian entries */
-    /* Conservation of Mass */
-    // over f0
-    A[0] = xx[2]/3.0 + xx[3]/6.0;
-    A[1] = xx[2]/6.0 + xx[3]/3.0;
-    A[2] = xx[0]/3.0 + xx[1]/6.0;
-    A[3] = xx[0]/6.0 + xx[1]/3.0;
-    A[4] = 0.0;
-    A[5] = 0.0;
-    // over f1
-    A[6] = -A[0];        
-    A[7] = -A[1] + xx[3];
-    A[8] = -A[2];        
-    A[9] = -A[3] + xx[1];
-    A[10] = 0.0;
-    A[11] = 0.0;
+    /* loop over conservation of mass */
+    for (PetscInt i = 0; i < nn*(1*n); i+=nn){
+        k = 0;
+        // over f_i
+        // PetscPrintf(PETSC_COMM_SELF, "%d, %d, %d, %d, %d, %d\n", i,i+1,n+i,n+i+1,2*n+i,2*n+i+1);
+        A[i] = xx[n+k]/3.0 + xx[n+k+1]/6.0;  
+        A[i+1] = xx[n+k]/6.0 + xx[n+k+1]/3.0;
+        A[n+i] = xx[k]/3.0 + xx[k+1]/6.0;    
+        A[n+i+1] = xx[k]/6.0 + xx[k+1]/3.0;  
+        A[2*n+i] = 0.0;
+        A[2*n+i+1] = 0.0;
+        // over f_{i+1}
+        j = i;
+        i += nn;
+        // PetscPrintf(PETSC_COMM_SELF, "%d, %d, %d, %d, %d, %d\n", i,i+1,n+i,n+i+1,2*n+i,2*n+i+1);
+        A[i] = -A[j];
+        A[i+1] = -A[j+1] + xx[n+k+1];
+        A[n+i] = -A[n+j];
+        A[n+i+1] = -A[n+j+1] + xx[k+1];
+        A[2*n+i] = 0.0;
+        A[2*n+i+1] = 0.0;
+        i += 2;
+        k += 2;
+    }
     /* Conservation of Momentum */
-    // over f2
-    A[12] = 1.0/6.0 * ( xx[3]*(xx[0]+xx[1]) + xx[2]*(3.0*xx[0]+xx[1]) );
-    A[13] = 1.0/6.0 * ( xx[2]*(xx[0]+xx[1]) + xx[3]*(xx[0]+3.0*xx[1]) );
-    A[14] = 1/12.0 * ( 3.0*pow(xx[0],2.0) + 2.0*xx[0]*xx[1] + pow(xx[1],2.0) );
-    A[15] = 1/12.0 * ( pow(xx[0],2.0) + 2.0*xx[0]*xx[1] + 3.0*pow(xx[1],2.0) );
-    A[16] = user->gamma_s / 2.0;
-    A[17] = user->gamma_s / 2.0;
-    // over f3
-    A[18] = -A[12];
-    A[19] = -A[13] + 2.0*xx[1]*xx[3];
-    A[20] = -A[14];
-    A[21] = -A[15] + pow(xx[1], 2.0);
-    A[22] = -A[16];
-    A[23] = -A[17] + user->gamma_s;
+    for (PetscInt i = nn*(1*n); i < nn*(2*n); i+=nn){
+        k = 0;
+        // over f_{6*n+i}
+        // PetscPrintf(PETSC_COMM_SELF, "%d, %d, %d, %d, %d, %d\n", i,i+1,n+i,n+i+1,2*n+i,2*n+i+1);
+        A[i] = xx[n+k]*xx[k]/2.0 + xx[n+k+1]*xx[k]/6.0 + xx[n+k]*xx[k+1]/6.0 + xx[n+k+1]*xx[k+1]/6.0;  
+        A[i+1] = xx[n+k]*xx[k]/6.0 + xx[n+k+1]*xx[k]/6.0 + xx[n+k]*xx[k+1]/6.0 + xx[n+k+1]*xx[k+1]/2.0;
+        A[n+i] = pow(xx[k],2.0)/4.0 + xx[k]*xx[k+1]/6.0 + pow(xx[k+1],2.0)/12.0;                       
+        A[n+i+1] = pow(xx[k],2.0)/12.0 + xx[k]*xx[k+1]/6.0 + pow(xx[k+1],2.0)/4.0;                     
+        A[2*n+i] = user->ctx.gamma_s/2.0;
+        A[2*n+i+1] = user->ctx.gamma_s/2.0;
+        // PetscPrintf(PETSC_COMM_SELF, "%.4e \t %.4e\n", A[2*n+i], A[2*n+i+1]);
+        // over f_{6*n+i+1}
+        j = i;
+        i += nn;
+        // PetscPrintf(PETSC_COMM_SELF, "%d, %d, %d, %d, %d, %d\n", i,i+1,n+i,n+i+1,2*n+i,2*n+i+1);
+        A[i] = -A[j];
+        A[i+1] = -A[j+1] + 2.0*xx[k+1]*xx[n+k+1];
+        A[n+i] = -A[n+j];
+        A[n+i+1] = -A[n+j+1] + pow(xx[k+1],2.0);
+        A[2*n+i] = -A[2*n+j];
+        A[2*n+i+1] = -A[2*n+j+1] + user->ctx.gamma_s;
+        i += 2;
+        k += 2;
+    }
     /* Conservation of Energy */
-    // over f4
-    A[24] = 1.0/120.0 * (40.0*xx[4]*(1.0+user->gamma_s) + 20.0*xx[5]*(1.0+user->gamma_s) + 6.0*xx[2]*(6.0*pow(xx[0],2.0) + 3.0*xx[0]*xx[1] + pow(xx[1],2.0)) + 3.0*xx[3]*(3.0*pow(xx[0],2.0) + 4.0*xx[0]*xx[1] + 3.0*pow(xx[1],2.0)) );
-    A[25] = 1.0/120.0 * (20.0*xx[4]*(1.0+user->gamma_s) + 40.0*xx[5]*(1.0+user->gamma_s) + 3.0*xx[2]*(3.0*pow(xx[0],2.0) + 4.0*xx[0]*xx[1] + 3.0*pow(xx[1],2.0)) + 6.0*xx[3]*(pow(xx[0],2.0) + 3.0*xx[0]*xx[1] + 6.0*pow(xx[1],2.0)) );
-    A[26] = 1.0/40.0 * (4.0*pow(xx[0],3.0) + 3.0*pow(xx[0],2.0)*xx[1] + 2.0*xx[0]*pow(xx[1],2.0) + pow(xx[1],3.0));
-    A[27] = 1.0/40.0 * (pow(xx[0],3.0) + 2.0*pow(xx[0],2.0)*xx[1] + 3.0*xx[0]*pow(xx[1],2.0) + 4.0*pow(xx[1],3.0));
-    A[28] = 1.0/6.0 * (1.0+user->gamma_s) * (2.0*xx[0] + xx[1]);
-    A[29] = 1.0/6.0 * (1.0+user->gamma_s) * (xx[0] + 2.0*xx[1]);
-    // over f5
-    A[30] = -A[24];
-    A[31] = -A[25] + (3.0*pow(xx[1],2.0)*xx[3])/2.0 + (1.0 + user->gamma_s) * xx[5];
-    A[32] = -A[26];
-    A[33] = -A[27] + pow(xx[1],3.0)/2.0;
-    A[34] = -A[28];
-    A[35] = -A[29] + (1.0 + user->gamma_s) * xx[1];
+    for (PetscInt i = nn*(2*n); i < nn*(3*n); i+=nn){
+        k = 0;
+        // over f_{12*n+i}
+        // PetscPrintf(PETSC_COMM_SELF, "%d, %d, %d, %d, %d, %d\n", i,i+1,n+i,n+i+1,2*n+i,2*n+i+1);
+        A[i] = (2.0*xx[2*n+k] + xx[2*n+k+1])*(1.0+user->ctx.gamma_s)/6.0 + 3.0/10.0*xx[n+k]*pow(xx[k],2.0) + 3.0/40.0*xx[n+k+1]*pow(xx[k],2.0) + 3.0/20.0*xx[n+k]*xx[k]*xx[k+1] + 1.0/10.0*xx[n+k+1]*xx[k]*xx[k+1] + 1.0/20.0*xx[n+k]*pow(xx[k+1],2.0) + 3.0/40.0*xx[n+k+1]*pow(xx[k+1],2.0);
+        A[i+1] = (xx[2*n+k] + 2.0*xx[2*n+k+1])*(1.0+user->ctx.gamma_s)/6.0 + 3.0/40.0*xx[n+k]*pow(xx[k],2.0) + 1.0/20.0*xx[n+k+1]*pow(xx[k],2.0) + 1.0/10.0*xx[n+k]*xx[k]*xx[k+1] + 3.0/20.0*xx[n+k+1]*xx[k]*xx[k+1] + 3.0/40.0*xx[n+k]*pow(xx[k+1],2.0) + 3.0/10.0*xx[n+k+1]*pow(xx[k+1],2.0);
+        A[n+i] = pow(xx[k],3.0)/10.0 + 3.0/40.0*pow(xx[k],2.0)*xx[k+1] + 1.0/20.0*xx[k]*pow(xx[k+1],2.0) + 1.0/40.0*pow(xx[k+1],3.0);
+        A[n+i+1] = pow(xx[k],3.0)/40.0 + 1.0/20.0*pow(xx[k],2.0)*xx[k+1] + 3.0/40.0*xx[k]*pow(xx[k+1],2.0) + 1.0/10.0*pow(xx[k+1],3.0);
+        A[2*n+i] = (2.0*xx[k] + xx[k+1])*(1.0+user->ctx.gamma_s)/6.0;
+        A[2*n+i+1] = (xx[k] + 2.0*xx[k+1])*(1.0+user->ctx.gamma_s)/6.0;
+        // over f_{12*n+i+1}
+        j = i;
+        i += nn;
+        // PetscPrintf(PETSC_COMM_SELF, "%d, %d, %d, %d, %d, %d\n", i,i+1,n+i,n+i+1,2*n+i,2*n+i+1);
+        A[i] = -A[j];
+        A[i+1] = -A[j+1] + (3.0*pow(xx[k+1],2.0)*xx[n+k+1])/2.0 + (1.0 + user->ctx.gamma_s) * xx[2*n+k+1];
+        A[n+i] = -A[n+j];
+        A[n+i+1] = -A[n+j+1] + pow(xx[k+1],3.0)/2.0;
+        A[2*n+i] = -A[2*n+j];
+        A[2*n+i+1] = -A[2*nn+j+1] + (1.0 + user->ctx.gamma_s) * xx[k+1];
+        i += 2;
+        k += 2;
+    }
 
     /* and insert into matrix B */
-    ierr = MatSetValues(B, 6, idx, 6, idx, A, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = MatSetValues(B, nn, idx, nn, idx, A, INSERT_VALUES); CHKERRQ(ierr);
 
     /* Restor vector */
     ierr = VecRestoreArrayRead(x, &xx);CHKERRQ(ierr);
-    
+
+    PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_ASCII_MATLAB);
     /* Assemble matrix */
     ierr = MatAssemblyBegin(B,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
     ierr = MatAssemblyEnd(B,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+    // PetscPrintf(PETSC_COMM_SELF, "view B\n");
+    // MatView(B, PETSC_VIEWER_STDOUT_WORLD);
     if (jac != B) {
+        // PetscPrintf(PETSC_COMM_SELF, "view jac\n");
         ierr = MatAssemblyBegin(jac,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
         ierr = MatAssemblyEnd(jac,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
+        // MatView(jac, PETSC_VIEWER_STDOUT_WORLD);
     }
+    // PetscViewerPopFormat(PETSC_VIEWER_STDOUT_WORLD);
+    // exit(-1);
     return 0;
 }

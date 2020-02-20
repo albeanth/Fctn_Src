@@ -47,6 +47,7 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         PetscScalar l2Err_Vel, l2Err_Rho, l2Err_Em; /* l2 error */
         PetscScalar h1Err_Vel, h1Err_Rho, h1Err_Em; /* h1 error */
         ApplicationCTX ctx; /* Instance of ApplicationCTX struct */
+        PetscInt N; /* number of nodes in stencil * number of governing equations */
         // Public Member Functions
         PetscErrorCode NL_1D();
     private:
@@ -54,7 +55,6 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         double xL, xR, dx, x; /* cell specific information */
         PetscScalar src_mass, src_momen, src_energy;
         PetscMPIInt size;
-        PetscInt N;
         PetscErrorCode ierr;    /* petsc error code */
         SNES snes;              /* nonlinear solver context */
         Vec soln, residual;     /* local solution and residual vectors */
