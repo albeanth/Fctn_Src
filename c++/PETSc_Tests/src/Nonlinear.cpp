@@ -492,7 +492,6 @@ PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx) {
     for (PetscInt i = 0; i < nn*(1*n); i+=nn){
         k = 0;
         // over f_i
-        // PetscPrintf(PETSC_COMM_SELF, "%d, %d, %d, %d, %d, %d\n", i,i+1,n+i,n+i+1,2*n+i,2*n+i+1);
         A[i] = xx[n+k]/3.0 + xx[n+k+1]/6.0;  
         A[i+1] = xx[n+k]/6.0 + xx[n+k+1]/3.0;
         A[n+i] = xx[k]/3.0 + xx[k+1]/6.0;    
@@ -502,7 +501,6 @@ PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx) {
         // over f_{i+1}
         j = i;
         i += nn;
-        // PetscPrintf(PETSC_COMM_SELF, "%d, %d, %d, %d, %d, %d\n", i,i+1,n+i,n+i+1,2*n+i,2*n+i+1);
         A[i] = -A[j];
         A[i+1] = -A[j+1] + xx[n+k+1];
         A[n+i] = -A[n+j];
@@ -516,18 +514,15 @@ PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx) {
     for (PetscInt i = nn*(1*n); i < nn*(2*n); i+=nn){
         k = 0;
         // over f_{6*n+i}
-        // PetscPrintf(PETSC_COMM_SELF, "%d, %d, %d, %d, %d, %d\n", i,i+1,n+i,n+i+1,2*n+i,2*n+i+1);
         A[i] = xx[n+k]*xx[k]/2.0 + xx[n+k+1]*xx[k]/6.0 + xx[n+k]*xx[k+1]/6.0 + xx[n+k+1]*xx[k+1]/6.0;  
         A[i+1] = xx[n+k]*xx[k]/6.0 + xx[n+k+1]*xx[k]/6.0 + xx[n+k]*xx[k+1]/6.0 + xx[n+k+1]*xx[k+1]/2.0;
         A[n+i] = pow(xx[k],2.0)/4.0 + xx[k]*xx[k+1]/6.0 + pow(xx[k+1],2.0)/12.0;                       
         A[n+i+1] = pow(xx[k],2.0)/12.0 + xx[k]*xx[k+1]/6.0 + pow(xx[k+1],2.0)/4.0;                     
         A[2*n+i] = user->ctx.gamma_s/2.0;
         A[2*n+i+1] = user->ctx.gamma_s/2.0;
-        // PetscPrintf(PETSC_COMM_SELF, "%.4e \t %.4e\n", A[2*n+i], A[2*n+i+1]);
         // over f_{6*n+i+1}
         j = i;
         i += nn;
-        // PetscPrintf(PETSC_COMM_SELF, "%d, %d, %d, %d, %d, %d\n", i,i+1,n+i,n+i+1,2*n+i,2*n+i+1);
         A[i] = -A[j];
         A[i+1] = -A[j+1] + 2.0*xx[k+1]*xx[n+k+1];
         A[n+i] = -A[n+j];
@@ -541,7 +536,6 @@ PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx) {
     for (PetscInt i = nn*(2*n); i < nn*(3*n); i+=nn){
         k = 0;
         // over f_{12*n+i}
-        // PetscPrintf(PETSC_COMM_SELF, "%d, %d, %d, %d, %d, %d\n", i,i+1,n+i,n+i+1,2*n+i,2*n+i+1);
         A[i] = (2.0*xx[2*n+k] + xx[2*n+k+1])*(1.0+user->ctx.gamma_s)/6.0 + 3.0/10.0*xx[n+k]*pow(xx[k],2.0) + 3.0/40.0*xx[n+k+1]*pow(xx[k],2.0) + 3.0/20.0*xx[n+k]*xx[k]*xx[k+1] + 1.0/10.0*xx[n+k+1]*xx[k]*xx[k+1] + 1.0/20.0*xx[n+k]*pow(xx[k+1],2.0) + 3.0/40.0*xx[n+k+1]*pow(xx[k+1],2.0);
         A[i+1] = (xx[2*n+k] + 2.0*xx[2*n+k+1])*(1.0+user->ctx.gamma_s)/6.0 + 3.0/40.0*xx[n+k]*pow(xx[k],2.0) + 1.0/20.0*xx[n+k+1]*pow(xx[k],2.0) + 1.0/10.0*xx[n+k]*xx[k]*xx[k+1] + 3.0/20.0*xx[n+k+1]*xx[k]*xx[k+1] + 3.0/40.0*xx[n+k]*pow(xx[k+1],2.0) + 3.0/10.0*xx[n+k+1]*pow(xx[k+1],2.0);
         A[n+i] = pow(xx[k],3.0)/10.0 + 3.0/40.0*pow(xx[k],2.0)*xx[k+1] + 1.0/20.0*xx[k]*pow(xx[k+1],2.0) + 1.0/40.0*pow(xx[k+1],3.0);
@@ -551,7 +545,6 @@ PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx) {
         // over f_{12*n+i+1}
         j = i;
         i += nn;
-        // PetscPrintf(PETSC_COMM_SELF, "%d, %d, %d, %d, %d, %d\n", i,i+1,n+i,n+i+1,2*n+i,2*n+i+1);
         A[i] = -A[j];
         A[i+1] = -A[j+1] + (3.0*pow(xx[k+1],2.0)*xx[n+k+1])/2.0 + (1.0 + user->ctx.gamma_s) * xx[2*n+k+1];
         A[n+i] = -A[n+j];
@@ -568,19 +561,12 @@ PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx) {
     /* Restor vector */
     ierr = VecRestoreArrayRead(x, &xx);CHKERRQ(ierr);
 
-    PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_ASCII_MATLAB);
     /* Assemble matrix */
     ierr = MatAssemblyBegin(B,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
     ierr = MatAssemblyEnd(B,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-    // PetscPrintf(PETSC_COMM_SELF, "view B\n");
-    // MatView(B, PETSC_VIEWER_STDOUT_WORLD);
     if (jac != B) {
-        // PetscPrintf(PETSC_COMM_SELF, "view jac\n");
         ierr = MatAssemblyBegin(jac,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
         ierr = MatAssemblyEnd(jac,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);
-        // MatView(jac, PETSC_VIEWER_STDOUT_WORLD);
     }
-    // PetscViewerPopFormat(PETSC_VIEWER_STDOUT_WORLD);
-    // exit(-1);
     return 0;
 }
