@@ -7,6 +7,7 @@
 #include "SetUpGrid.hpp"    // <- parent class
 #include "TestFunction.hpp" // <- parent class
 #include <petscsnes.h>
+#include <petscdraw.h>
 #include <vector>
 
 // ANSI Color Codes for color output
@@ -24,9 +25,15 @@ struct ApplicationCTX{
     Vec loc_efluid_src, glo_efluid_src;  // mms source for cons. of fluid energy
 };
 
+struct MonitorCTX{
+  PetscViewer viewer1, viewer2, viewer3;
+  PetscDraw draw;
+};
+
 // function declarations for nonlinear function and jacobian forms
 extern PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx);
 extern PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx);
+extern PetscErrorCode Monitor(SNES snes, PetscInt a, PetscReal b, void* ctx);
 
 class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
     /*
@@ -48,6 +55,7 @@ class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
         PetscScalar h1Err_Vel, h1Err_Rho, h1Err_Em; /* h1 error */
         ApplicationCTX ctx; /* Instance of ApplicationCTX struct */
         PetscInt N; /* number of nodes in stencil * number of governing equations */
+        MonitorCTX monCTX;
         // Public Member Functions
         PetscErrorCode NL_1D();
     private:
