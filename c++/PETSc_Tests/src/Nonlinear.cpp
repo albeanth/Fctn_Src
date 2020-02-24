@@ -10,6 +10,7 @@ PetscErrorCode NonLinear::Initialize_NL_1D(){
     N = info.nnodes * 4;
     /* ------ Initialize SNES ------ */
     ierr = SNESCreate(PETSC_COMM_WORLD, &snes); CHKERRQ(ierr); // create context 
+    ierr = SNESSetTolerances(snes, 1e-10, 1e-50, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
     // create solution vector
     ierr = VecCreate(PETSC_COMM_WORLD, &soln); CHKERRQ(ierr);
     ierr = VecSetSizes(soln, PETSC_DECIDE, N); CHKERRQ(ierr);
@@ -49,7 +50,7 @@ PetscErrorCode NonLinear::Initialize_NL_1D(){
     ierr = KSPSetType(ksp, KSPGMRES); CHKERRQ(ierr);
     ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
     ierr = PCSetType(pc, PCILU); CHKERRQ(ierr);
-    ierr = KSPSetTolerances(ksp, 1e-12, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
+    ierr = KSPSetTolerances(ksp, 1e-50, 1e-9, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
     // set runtime options THESE WILL OVERRIDE THE ABOVE THREE COMMANDS
     ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
     ierr = SNESSetFromOptions(snes); CHKERRQ(ierr);
@@ -388,10 +389,10 @@ PetscErrorCode NonLinear::NLSolve(){
      */
     /* Set initial guess */
     for (PetscInt i=0; i<info.nnodes; i++){
-        ierr = VecSetValue(soln, i, u(0.0), INSERT_VALUES); CHKERRQ(ierr);
-        ierr = VecSetValue(soln, i+info.nnodes, rho(0.0), INSERT_VALUES); CHKERRQ(ierr);
-        ierr = VecSetValue(soln, i+2*info.nnodes, efluid(0.0), INSERT_VALUES); CHKERRQ(ierr);
-        ierr = VecSetValue(soln, i+3*info.nnodes, erad(0.0), INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i, u(info.xnod[i]), INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i+info.nnodes, rho(info.xnod[i]), INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i+2*info.nnodes, efluid(info.xnod[i]), INSERT_VALUES); CHKERRQ(ierr);
+        ierr = VecSetValue(soln, i+3*info.nnodes, erad(info.xnod[i]), INSERT_VALUES); CHKERRQ(ierr);
     }
     /* Solve nonlinear system */
     ierr = SNESSolve(snes, NULL, soln); CHKERRQ(ierr);
