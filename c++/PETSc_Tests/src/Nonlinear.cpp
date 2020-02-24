@@ -40,7 +40,7 @@ PetscErrorCode NonLinear::Initialize_NL_1D(){
     ierr = KSPSetType(ksp, KSPGMRES); CHKERRQ(ierr);
     ierr = KSPGetPC(ksp, &pc); CHKERRQ(ierr);
     ierr = PCSetType(pc, PCILU); CHKERRQ(ierr);
-    ierr = KSPSetTolerances(ksp, 1e-12, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
+    ierr = KSPSetTolerances(ksp, 1e-50, 1e-10, PETSC_DEFAULT, PETSC_DEFAULT); CHKERRQ(ierr);
     // set runtime options THESE WILL OVERRIDE THE ABOVE THREE COMMANDS
     ierr = KSPSetFromOptions(ksp); CHKERRQ(ierr);
     ierr = SNESSetFromOptions(snes); CHKERRQ(ierr);
@@ -297,6 +297,16 @@ PetscErrorCode NonLinear::Local2Global(const int el){
 }
 
 PetscErrorCode Monitor(SNES snes, PetscInt its, PetscReal fnorm, void *ctx){
+    /* uncomment to view jacobian */
+    // Mat A;
+    // SNESGetJacobian(snes, &A, NULL, NULL, NULL);
+    // MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
+    // MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+    // PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_ASCII_MATLAB);
+    // MatView(A, PETSC_VIEWER_STDOUT_WORLD);
+    // PetscViewerPopFormat(PETSC_VIEWER_STDOUT_WORLD);
+
+    /* uncomment to view solution */
     NonLinear *user = (NonLinear *)ctx;
     Vec soln;
     PetscScalar *tmp_vel, *tmp_rho, *tmp_efluid;
@@ -325,12 +335,6 @@ PetscErrorCode Monitor(SNES snes, PetscInt its, PetscReal fnorm, void *ctx){
     VecView(user->velocity, user->monCTX.viewer1);
     VecView(user->density, user->monCTX.viewer2);
     VecView(user->energy, user->monCTX.viewer3);
-    // for (int index = 0; index < user->info.nnodes; index++){
-    //     PetscPrintf(PETSC_COMM_WORLD, "%.4e\t% .8e\t% .8e\t% .8e\n", user->info.xnod[index], tmp_vel[index], tmp_rho[index], tmp_efluid[index]);
-    //     if (index % 2 == 1){
-    //         PetscPrintf(PETSC_COMM_WORLD,"\n");
-    //     }
-    // }
 
     return 0;
 }
@@ -520,6 +524,7 @@ PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx) {
 
     PetscScalar *A;
     A = (PetscScalar *)calloc(nn*nn, sizeof(PetscScalar));
+    // A = (PetscScalar *)malloc(nn*nn * sizeof(PetscScalar));
 
     // assign petsc Vec to c array for use
     PetscInt *idx;
