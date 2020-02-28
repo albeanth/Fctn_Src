@@ -87,19 +87,6 @@ PetscErrorCode NonLinear::NL_1D(){
     }
     ierr = Initialize_NL_1D(); CHKERRQ(ierr);
 
-    /* --------- Assign and Assembly Boundary Conditions --------- */
-    // assign left side BC (hydro equations)
-    ierr = VecSetValue(velocity, 0, u(info.bounds[0]), INSERT_VALUES); CHKERRQ(ierr);
-    ierr = VecSetValue(density, 0, rho(info.bounds[0]), INSERT_VALUES); CHKERRQ(ierr);
-    ierr = VecSetValue(energy, 0, efluid(info.bounds[0]), INSERT_VALUES); CHKERRQ(ierr);
-    // assemble vectors
-    ierr = VecAssemblyBegin(velocity); CHKERRQ(ierr); 
-    ierr = VecAssemblyEnd(velocity); CHKERRQ(ierr);
-    ierr = VecAssemblyBegin(density); CHKERRQ(ierr); 
-    ierr = VecAssemblyEnd(density); CHKERRQ(ierr);
-    ierr = VecAssemblyBegin(energy); CHKERRQ(ierr); 
-    ierr = VecAssemblyEnd(energy); CHKERRQ(ierr);   
-
     ierr = InitializeLocalRHSF(); CHKERRQ(ierr);
     get1D_QPs(info.maxord, qps1d); // set qps
 
@@ -523,8 +510,8 @@ PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx) {
     // const int nels{user->info.nels};
 
     PetscScalar *A;
-    A = (PetscScalar *)calloc(nn*nn, sizeof(PetscScalar));
-    // A = (PetscScalar *)malloc(nn*nn * sizeof(PetscScalar));
+    // A = (PetscScalar *)calloc(nn*nn, sizeof(PetscScalar));
+    A = (PetscScalar *)malloc(nn*nn * sizeof(PetscScalar));
 
     // assign petsc Vec to c array for use
     PetscInt *idx;
