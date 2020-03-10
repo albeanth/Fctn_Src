@@ -8,7 +8,7 @@ CPPFLAGS = -Wall -O3 -std=c++11
 PETSC_INC = ${PETSC_DIR}/include
 PETSC_ARCH_INC = ${PETSC_DIR}/${PETSC_ARCH}/include
 X11_INC = /opt/X11/include
-MPI_LIB = /usr/local/Cellar/open-mpi/4.0.2/lib
+MPI_LIB = /usr/local/Cellar/open-mpi/4.0.3/lib
 GCC_LIB = /usr/local/Cellar/gcc/9.2.0_3/lib/gcc/9
 ARCH_DEBUG = /Users/tonyalberti/Desktop/petsc/arch-darwin-c-debug/lib
 X11_LIB = /opt/X11/lib
