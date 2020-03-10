@@ -342,14 +342,14 @@ PetscErrorCode NonLinear::NLSolve(){
     
     /* Map computed solution to solution vectors */
     PetscScalar *tmp_vel, *tmp_rho, *tmp_efluid;
-    tmp_vel = (PetscScalar*) malloc(info.nnodes * sizeof(PetscScalar));
-    tmp_rho = (PetscScalar*) malloc(info.nnodes * sizeof(PetscScalar));
-    tmp_efluid = (PetscScalar*) malloc(info.nnodes * sizeof(PetscScalar));
+    PetscMalloc(info.nnodes, &tmp_vel);
+    PetscMalloc(info.nnodes, &tmp_rho);
+    PetscMalloc(info.nnodes, &tmp_efluid);
 
     PetscInt *idu, *idr, *idem;
-    idu = (PetscInt*) malloc(info.nnodes * sizeof(PetscInt));
-    idr = (PetscInt *)malloc(info.nnodes * sizeof(PetscInt));
-    idem = (PetscInt *)malloc(info.nnodes * sizeof(PetscInt));
+    PetscMalloc(info.nnodes, &idu);
+    PetscMalloc(info.nnodes, &idr);
+    PetscMalloc(info.nnodes, &idem);
     for (int i=0; i<info.nnodes; i++){
         idu[i] = i;
         idr[i] = i + info.nnodes;
@@ -383,15 +383,15 @@ PetscErrorCode FormFunction(SNES snes, Vec soln, Vec f, void *ctx) {
     const int nn {user->info.nnodes};
 
     PetscScalar mass_upwind, *mass_src;
-    mass_src = (PetscScalar *) malloc(nn * sizeof(PetscScalar));
+    PetscMalloc1(nn, &mass_src);
     PetscScalar momen_upwind, *momen_src;
-    momen_src = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    PetscMalloc1(nn, &momen_src);
     PetscScalar efluid_upwind, *efluid_src;
-    efluid_src = (PetscScalar *)malloc(nn * sizeof(PetscScalar));
+    PetscMalloc1(nn, &efluid_src);
 
     // assign petsc Vec to c array for use
     PetscInt *idx;
-    idx = (PetscInt*) malloc(nn * sizeof(PetscInt));
+    PetscMalloc1(nn, &idx);
     for (int i=0; i<nn; i++){
         idx[i] = i;
     }
@@ -510,13 +510,11 @@ PetscErrorCode FormJacobian(SNES snes, Vec soln, Mat jac, Mat B, void *ctx) {
     // const int nels{user->info.nels};
 
     PetscScalar *A;
-    // A = (PetscScalar *)calloc(nn*nn, sizeof(PetscScalar));
-    A = (PetscScalar *)malloc(nn*nn * sizeof(PetscScalar));
+    PetscCalloc1(num_nodes_x3*num_nodes_x3, &A);
 
     // assign petsc Vec to c array for use
     PetscInt *idx;
-    idx = (PetscInt*) malloc(nn*nn * sizeof(PetscInt));
-    for (int i=0; i<nn*nn; i++){
+    PetscMalloc1(num_nodes_x3*num_nodes_x3, &idx);
         idx[i] = i;
     }
 
