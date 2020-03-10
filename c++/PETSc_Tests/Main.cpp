@@ -5,7 +5,7 @@
 
 int main(int argc,char **args){
     const int FEorder {1};
-    const std::vector<int> NumOfElem {32};
+    const std::vector<int> NumOfElem {6};
     /*
      * test #'s < 100
      *   CFEM using petsc ksp libary tests
