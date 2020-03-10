@@ -338,7 +338,7 @@ PetscErrorCode NonLinear::NLSolve(){
     }
     /* Solve nonlinear system */
     ierr = SNESSolve(snes, NULL, soln); CHKERRQ(ierr);
-    ierr = SNESView(snes, PETSC_VIEWER_STDOUT_WORLD);
+    // ierr = SNESView(snes, PETSC_VIEWER_STDOUT_WORLD);
     
     /* Map computed solution to solution vectors */
     PetscScalar *tmp_vel, *tmp_rho, *tmp_efluid;
@@ -505,9 +505,8 @@ PetscErrorCode FormJacobian(SNES snes, Vec soln, Mat jac, Mat B, void *ctx) {
     PetscErrorCode ierr;
     NonLinear *user = (NonLinear *)ctx;
     const PetscScalar *xx;
-    const int nn{user->N};
+    const int num_nodes_x3{user->N};
     const int n{user->info.nnodes};
-    // const int nels{user->info.nels};
 
     PetscScalar *A;
     PetscCalloc1(num_nodes_x3*num_nodes_x3, &A);
@@ -515,17 +514,19 @@ PetscErrorCode FormJacobian(SNES snes, Vec soln, Mat jac, Mat B, void *ctx) {
     // assign petsc Vec to c array for use
     PetscInt *idx;
     PetscMalloc1(num_nodes_x3*num_nodes_x3, &idx);
+    for (int i=0; i<num_nodes_x3*num_nodes_x3; i++){
         idx[i] = i;
     }
 
     /* Get pointer to vector data */
     ierr = VecGetArrayRead(soln,&xx);CHKERRQ(ierr);
 
-    PetscInt j, k;
+    PetscInt i_prev; // stores index location of equation over left node of each cell
+    PetscInt k;      // stores index location of variable for solution vector, xx
     /* Compute Jacobian entries */
     /* loop over conservation of mass */
     k = 0;
-    for (PetscInt i = 0; i < nn*(1*n); i+=nn){
+    for (PetscInt i = 0; i < num_nodes_x3*(1*n); i+=num_nodes_x3){
         // over f_i
         A[i] = xx[n+k]/3.0 + xx[n+k+1]/6.0;  
         A[i+1] = xx[n+k]/6.0 + xx[n+k+1]/3.0;
@@ -538,12 +539,12 @@ PetscErrorCode FormJacobian(SNES snes, Vec soln, Mat jac, Mat B, void *ctx) {
             A[n+i-1] = -xx[k-1];
         }
         // over f_{i+1}
-        j = i;
-        i += nn;
-        A[i] = -A[j];
-        A[i+1] = -A[j+1] + xx[n+k+1];
-        A[n+i] = -A[n+j];
-        A[n+i+1] = -A[n+j+1] + xx[k+1];
+        i_prev = i;
+        i += num_nodes_x3;
+        A[i] = -A[i_prev];
+        A[i+1] = -A[i_prev+1] + xx[n+k+1];
+        A[n+i] = -A[n+i_prev];
+        A[n+i+1] = -A[n+i_prev+1] + xx[k+1];
         A[2*n+i] = 0.0;
         A[2*n+i+1] = 0.0;
         i += 2;
@@ -551,8 +552,8 @@ PetscErrorCode FormJacobian(SNES snes, Vec soln, Mat jac, Mat B, void *ctx) {
     }
     /* Conservation of Momentum */
     k = 0;
-    for (PetscInt i = nn*(1*n); i < nn*(2*n); i+=nn){
-        // over f_{6*n+i}
+    for (PetscInt i = num_nodes_x3*(1*n); i < num_nodes_x3*(2*n); i+=num_nodes_x3){
+        // over f_i
         A[i] = xx[n+k]*xx[k]/2.0 + xx[n+k+1]*xx[k]/6.0 + xx[n+k]*xx[k+1]/6.0 + xx[n+k+1]*xx[k+1]/6.0;  
         A[i+1] = xx[n+k]*xx[k]/6.0 + xx[n+k+1]*xx[k]/6.0 + xx[n+k]*xx[k+1]/6.0 + xx[n+k+1]*xx[k+1]/2.0;
         A[n+i] = pow(xx[k],2.0)/4.0 + xx[k]*xx[k+1]/6.0 + pow(xx[k+1],2.0)/12.0;                       
@@ -564,22 +565,22 @@ PetscErrorCode FormJacobian(SNES snes, Vec soln, Mat jac, Mat B, void *ctx) {
             A[n+i-1] = -pow(xx[k-1],2.0);
             A[2*n+i-1] = -user->ctx.gamma_s;
         }
-        // over f_{6*n+i+1}
-        j = i;
-        i += nn;
-        A[i] = -A[j];
-        A[i+1] = -A[j+1] + 2.0*xx[k+1]*xx[n+k+1];
-        A[n+i] = -A[n+j];
-        A[n+i+1] = -A[n+j+1] + pow(xx[k+1],2.0);
-        A[2*n+i] = -A[2*n+j];
-        A[2*n+i+1] = -A[2*n+j+1] + user->ctx.gamma_s;
+        // over f_{i+1}
+        i_prev = i;
+        i += num_nodes_x3;
+        A[i] = -A[i_prev];
+        A[i+1] = -A[i_prev+1] + 2.0*xx[k+1]*xx[n+k+1];
+        A[n+i] = -A[n+i_prev];
+        A[n+i+1] = -A[n+i_prev+1] + pow(xx[k+1],2.0);
+        A[2*n+i] = -A[2*n+i_prev];
+        A[2*n+i+1] = -A[2*n+i_prev+1] + user->ctx.gamma_s;
         i += 2;
         k += 2;
     }
     /* Conservation of Energy */
     k = 0;
-    for (PetscInt i = nn*(2*n); i < nn*(3*n); i+=nn){
-        // over f_{12*n+i}
+    for (PetscInt i = num_nodes_x3*(2*n); i < num_nodes_x3*(3*n); i+=num_nodes_x3){
+        // over f_i
         A[i] = (2.0*xx[2*n+k] + xx[2*n+k+1])*(1.0+user->ctx.gamma_s)/6.0 + 3.0/10.0*xx[n+k]*pow(xx[k],2.0) + 3.0/40.0*xx[n+k+1]*pow(xx[k],2.0) + 3.0/20.0*xx[n+k]*xx[k]*xx[k+1] + 1.0/10.0*xx[n+k+1]*xx[k]*xx[k+1] + 1.0/20.0*xx[n+k]*pow(xx[k+1],2.0) + 3.0/40.0*xx[n+k+1]*pow(xx[k+1],2.0);
         A[i+1] = (xx[2*n+k] + 2.0*xx[2*n+k+1])*(1.0+user->ctx.gamma_s)/6.0 + 3.0/40.0*xx[n+k]*pow(xx[k],2.0) + 1.0/20.0*xx[n+k+1]*pow(xx[k],2.0) + 1.0/10.0*xx[n+k]*xx[k]*xx[k+1] + 3.0/20.0*xx[n+k+1]*xx[k]*xx[k+1] + 3.0/40.0*xx[n+k]*pow(xx[k+1],2.0) + 3.0/10.0*xx[n+k+1]*pow(xx[k+1],2.0);
         A[n+i] = pow(xx[k],3.0)/10.0 + 3.0/40.0*pow(xx[k],2.0)*xx[k+1] + 1.0/20.0*xx[k]*pow(xx[k+1],2.0) + 1.0/40.0*pow(xx[k+1],3.0);
@@ -591,21 +592,21 @@ PetscErrorCode FormJacobian(SNES snes, Vec soln, Mat jac, Mat B, void *ctx) {
             A[n+i-1] = -0.5*pow(xx[k-1],3.0);
             A[2*n+i-1] = -(1.0+user->ctx.gamma_s)*xx[k-1];
         }
-        // over f_{12*n+i+1}
-        j = i;
-        i += nn;
-        A[i] = -A[j];
-        A[i+1] = -A[j+1] + (3.0*pow(xx[k+1],2.0)*xx[n+k+1])/2.0 + (1.0 + user->ctx.gamma_s) * xx[2*n+k+1];
-        A[n+i] = -A[n+j];
-        A[n+i+1] = -A[n+j+1] + pow(xx[k+1],3.0)/2.0;
-        A[2*n+i] = -A[2*n+j];
-        A[2*n+i+1] = -A[2*n+j+1] + (1.0 + user->ctx.gamma_s) * xx[k+1];
+        // over f_{i+1}
+        i_prev = i;
+        i += num_nodes_x3;
+        A[i] = -A[i_prev];
+        A[i+1] = -A[i_prev+1] + (3.0*pow(xx[k+1],2.0)*xx[n+k+1])/2.0 + (1.0 + user->ctx.gamma_s) * xx[2*n+k+1];
+        A[n+i] = -A[n+i_prev];
+        A[n+i+1] = -A[n+i_prev+1] + pow(xx[k+1],3.0)/2.0;
+        A[2*n+i] = -A[2*n+i_prev];
+        A[2*n+i+1] = -A[2*n+i_prev+1] + (1.0 + user->ctx.gamma_s) * xx[k+1];
         i += 2;
         k += 2;
     }
 
     /* and insert into matrix B */
-    ierr = MatSetValues(B, nn, idx, nn, idx, A, INSERT_VALUES); CHKERRQ(ierr);
+    ierr = MatSetValues(B, num_nodes_x3, idx, num_nodes_x3, idx, A, INSERT_VALUES); CHKERRQ(ierr);
 
     /* Restor vector */
     ierr = VecRestoreArrayRead(soln, &xx);CHKERRQ(ierr);
