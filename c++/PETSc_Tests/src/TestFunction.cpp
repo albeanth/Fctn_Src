@@ -63,7 +63,7 @@ double TestFunction::up(const double x){
        val = -1.0;
    }
    else if (selection == 1){
-       val = 2*x - 1.0;
+       val = 2.0*x - 1.0;
    }
    else if (selection == 100){
        val = -1.0;
@@ -97,7 +97,7 @@ double TestFunction::rho(const double x){
     val = 1.0 + x;
   }
   else if (selection == 101){
-    val = 1 + pow(x,2.0);
+    val = 1.0 + pow(x,2.0);
   }
   return val;
 }
@@ -122,10 +122,10 @@ double TestFunction::efluid(const double x){
   */
   double val{NAN};
   if (selection == 100){
-    val = 1 + pow(x,2.0);
+    val = 1.5 + x;//pow(x,2.0);
   }
   else if (selection == 101){
-    val = 1 + pow(x,3.0);
+    val = 1.0 + pow(x,3.0);
   }
   return val;
 }
@@ -136,7 +136,7 @@ double TestFunction::efluidp(const double x){
   */
   double val{NAN};
   if (selection == 100){
-    val = 2.0 * x;
+    val = 1.0;//2.0 * x;
   }
   else if (selection == 101){
     val = 3.0 * pow(x, 2.0);
