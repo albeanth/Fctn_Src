@@ -365,12 +365,12 @@ PetscErrorCode NonLinear::NLSolve(){
     return ierr;
 }
 
-PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
+PetscErrorCode FormFunction(SNES snes, Vec soln, Vec f, void *ctx) {
     /*
-     * evaluates nonlinear function, F(x)
+     * evaluates nonlinear function, F(soln)
      * INPUTS:
      *    snes - the PETSc SNES context
-     *    x    - input vector
+     *    soln    - input vector
      *    ctx  - optional user-defined content
      * OUTPUTS:
      *    f    - function vector
@@ -406,7 +406,7 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
         - You MUST call VecRestoreArray() when you no longer need access to
             the array.
     */
-    ierr = VecGetArrayRead(x,&xx);CHKERRQ(ierr);
+    ierr = VecGetArrayRead(soln,&xx);CHKERRQ(ierr);
     ierr = VecGetArray(f,&ff);CHKERRQ(ierr);
 
     /* Compute function */
@@ -492,13 +492,13 @@ PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx) {
                       - efluid_src[i+1];
     }
     /* Restore vectors */
-    ierr = VecRestoreArrayRead(x,&xx);CHKERRQ(ierr);
+    ierr = VecRestoreArrayRead(soln,&xx);CHKERRQ(ierr);
     ierr = VecRestoreArray(f,&ff);CHKERRQ(ierr);
 
     return 0;
 }
 
-PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx) {
+PetscErrorCode FormJacobian(SNES snes, Vec soln, Mat jac, Mat B, void *ctx) {
     /*
      *  compute Jacobia entries and insert into matrix
      */
@@ -521,7 +521,7 @@ PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx) {
     }
 
     /* Get pointer to vector data */
-    ierr = VecGetArrayRead(x,&xx);CHKERRQ(ierr);
+    ierr = VecGetArrayRead(soln,&xx);CHKERRQ(ierr);
 
     PetscInt j, k;
     /* Compute Jacobian entries */
@@ -610,7 +610,7 @@ PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx) {
     ierr = MatSetValues(B, nn, idx, nn, idx, A, INSERT_VALUES); CHKERRQ(ierr);
 
     /* Restor vector */
-    ierr = VecRestoreArrayRead(x, &xx);CHKERRQ(ierr);
+    ierr = VecRestoreArrayRead(soln, &xx);CHKERRQ(ierr);
 
     /* Assemble matrix */
     ierr = MatAssemblyBegin(B,MAT_FINAL_ASSEMBLY);CHKERRQ(ierr);

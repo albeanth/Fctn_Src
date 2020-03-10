@@ -31,8 +31,8 @@ struct MonitorCTX{
 };
 
 // function declarations for nonlinear function and jacobian forms
-extern PetscErrorCode FormFunction(SNES snes, Vec x, Vec f, void *ctx);
-extern PetscErrorCode FormJacobian(SNES snes, Vec x, Mat jac, Mat B, void *ctx);
+extern PetscErrorCode FormFunction(SNES snes, Vec soln, Vec f, void *ctx);
+extern PetscErrorCode FormJacobian(SNES snes, Vec soln, Mat jac, Mat B, void *ctx);
 extern PetscErrorCode Monitor(SNES snes, PetscInt a, PetscReal b, void* ctx);
 
 class NonLinear : public TestFunction, public SetUpGrid, public PetscFEFuncs{
