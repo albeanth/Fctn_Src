@@ -285,43 +285,43 @@ PetscErrorCode NonLinear::Local2Global(const int el){
 
 PetscErrorCode Monitor(SNES snes, PetscInt its, PetscReal fnorm, void *ctx){
     /* uncomment to view jacobian */
-    // Mat A;
-    // SNESGetJacobian(snes, &A, NULL, NULL, NULL);
-    // MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
-    // MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
-    // PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_ASCII_MATLAB);
-    // MatView(A, PETSC_VIEWER_STDOUT_WORLD);
-    // PetscViewerPopFormat(PETSC_VIEWER_STDOUT_WORLD);
+    Mat A;
+    SNESGetJacobian(snes, &A, NULL, NULL, NULL);
+    MatAssemblyBegin(A, MAT_FINAL_ASSEMBLY);
+    MatAssemblyEnd(A, MAT_FINAL_ASSEMBLY);
+    PetscViewerPushFormat(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_ASCII_MATLAB);
+    MatView(A, PETSC_VIEWER_STDOUT_WORLD);
+    PetscViewerPopFormat(PETSC_VIEWER_STDOUT_WORLD);
 
     /* uncomment to view solution */
-    NonLinear *user = (NonLinear *)ctx;
-    Vec soln;
-    PetscScalar *tmp_vel, *tmp_rho, *tmp_efluid;
-    tmp_vel = (PetscScalar *)malloc(user->info.nnodes * sizeof(PetscScalar));
-    tmp_rho = (PetscScalar *)malloc(user->info.nnodes * sizeof(PetscScalar));
-    tmp_efluid = (PetscScalar *)malloc(user->info.nnodes * sizeof(PetscScalar));
+    // NonLinear *user = (NonLinear *)ctx;
+    // Vec soln;
+    // PetscScalar *tmp_vel, *tmp_rho, *tmp_efluid;
+    // tmp_vel = (PetscScalar *)malloc(user->info.nnodes * sizeof(PetscScalar));
+    // tmp_rho = (PetscScalar *)malloc(user->info.nnodes * sizeof(PetscScalar));
+    // tmp_efluid = (PetscScalar *)malloc(user->info.nnodes * sizeof(PetscScalar));
 
-    PetscInt *idu, *idr, *idem;
-    idu = (PetscInt*) malloc(user->info.nnodes * sizeof(PetscInt));
-    idr = (PetscInt *)malloc(user->info.nnodes * sizeof(PetscInt));
-    idem = (PetscInt *)malloc(user->info.nnodes * sizeof(PetscInt));
-    for (int i=0; i<user->info.nnodes; i++){
-        idu[i] = i;
-        idr[i] = i + user->info.nnodes;
-        idem[i] = i + 2*user->info.nnodes;
-    }
+    // PetscInt *idu, *idr, *idem;
+    // idu = (PetscInt*) malloc(user->info.nnodes * sizeof(PetscInt));
+    // idr = (PetscInt *)malloc(user->info.nnodes * sizeof(PetscInt));
+    // idem = (PetscInt *)malloc(user->info.nnodes * sizeof(PetscInt));
+    // for (int i=0; i<user->info.nnodes; i++){
+    //     idu[i] = i;
+    //     idr[i] = i + user->info.nnodes;
+    //     idem[i] = i + 2*user->info.nnodes;
+    // }
 
-    PetscPrintf(PETSC_COMM_WORLD,"iter = %D, SNES Function norm %g\n",its,(double)fnorm);
-    SNESGetSolution(snes, &soln);
-    VecGetValues(soln, user->info.nnodes, idu, tmp_vel);
-    VecGetValues(soln, user->info.nnodes, idr, tmp_rho);
-    VecGetValues(soln, user->info.nnodes, idem, tmp_efluid);
-    VecSetValues(user->velocity, user->info.nnodes, idu, tmp_vel, INSERT_VALUES);
-    VecSetValues(user->density, user->info.nnodes, idu, tmp_rho, INSERT_VALUES);
-    VecSetValues(user->energy, user->info.nnodes, idu, tmp_efluid, INSERT_VALUES);
-    VecView(user->velocity, user->monCTX.viewer1);
-    VecView(user->density, user->monCTX.viewer2);
-    VecView(user->energy, user->monCTX.viewer3);
+    // PetscPrintf(PETSC_COMM_WORLD,"iter = %D, SNES Function norm %g\n",its,(double)fnorm);
+    // SNESGetSolution(snes, &soln);
+    // VecGetValues(soln, user->info.nnodes, idu, tmp_vel);
+    // VecGetValues(soln, user->info.nnodes, idr, tmp_rho);
+    // VecGetValues(soln, user->info.nnodes, idem, tmp_efluid);
+    // VecSetValues(user->velocity, user->info.nnodes, idu, tmp_vel, INSERT_VALUES);
+    // VecSetValues(user->density, user->info.nnodes, idu, tmp_rho, INSERT_VALUES);
+    // VecSetValues(user->energy, user->info.nnodes, idu, tmp_efluid, INSERT_VALUES);
+    // VecView(user->velocity, user->monCTX.viewer1);
+    // VecView(user->density, user->monCTX.viewer2);
+    // VecView(user->energy, user->monCTX.viewer3);
 
     return 0;
 }
