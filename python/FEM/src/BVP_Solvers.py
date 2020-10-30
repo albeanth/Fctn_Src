@@ -140,8 +140,24 @@ class BVP_Solvers(mesh, func):
             #  - can make higher order FEs by generalizing 
             if el == 0:
                 self.Curr_iplus(el)
+                if (self.selection == 101):
+                    # incident partial current - still account for outgoing
+                    # partial current on left edge
+                    xL = self.xnod[self.nod[el, 0]]
+                    xR = self.xnod[self.nod[el, 1]]
+                    dx = xR-xL
+                    self.curr[self.nod[el, 0], self.nod[el, 0]] = 1.0/4.0 - self.D(xL)/(2.0*dx) # \phi_{i,L}
+                    self.curr[self.nod[el, 0], self.nod[el, 1]] = self.D(xL)/(2.0*dx)           # \phi_{i,R}
             elif el == self.nels-1:
                 self.Curr_iminus(el)
+                if (self.selection == 101):
+                    # incident partial current - still account for outgoing
+                    # partial current on right edge
+                    xL = self.xnod[self.nod[el, 0]]
+                    xR = self.xnod[self.nod[el, 1]]
+                    dx = xR-xL
+                    self.curr[self.nod[el, 1], self.nod[el, 0]] = self.D(xR)/(2.0*dx)           # \phi_{i,L}
+                    self.curr[self.nod[el, 1], self.nod[el, 1]] = 1.0/4.0 - self.D(xR)/(2.0*dx) # \phi_{i,R}
             else:
                 self.Curr_iminus(el)
                 self.Curr_iplus(el)
