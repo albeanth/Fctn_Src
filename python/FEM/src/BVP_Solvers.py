@@ -131,6 +131,7 @@ class BVP_Solvers(mesh, func):
             # # uncomment to see the local (stiffness+mass) matrix and local load vector
             # print(k)
             # print(m)
+            m = self.mass_lump(m)
             # print(f)
             # sys.exit()
 
@@ -199,6 +200,7 @@ class BVP_Solvers(mesh, func):
             tmp = 0.0
             for j in range(0,col):
                 tmp += m[i][j]
+                m[i][j] = 0.0
             m[i][i] = tmp
         return m
     
